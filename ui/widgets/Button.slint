@@ -1,0 +1,20 @@
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <length> font-size;
+    in property <brush> hover-background-color;
+    in property <brush> background-color;
+
+    callback clicked();
+
+    background: ta.has-hover ? hover-background-color : background-color;
+    accessible-role: button;
+
+    ta := TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {clicked()}
+        Text {
+            text: text;
+            font-size: font-size;
+        }
+    }
+}

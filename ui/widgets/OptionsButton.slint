@@ -1,0 +1,43 @@
+import { Button } from "Button.slint";
+export component OptionsButtons inherits Button {
+    width: 20px;
+    height: 20px;
+    text: "⁝";
+    border-radius: 20px;
+    font-size: 16px;
+
+    callback on-close();
+    callback on-options();
+
+    clicked => {
+        options.show();
+    }
+
+    options := PopupWindow {
+        width: 70px;
+        height: 80px;
+        close-policy: PopupClosePolicy.close-on-click-outside;
+        x: parent.width - options.width;
+
+        Rectangle {
+            border-radius: 12px;
+            background: #383838;
+
+            VerticalLayout {
+                padding: 7px;
+                Button {
+                    text: "Options";
+                    hover-background-color: #20772f;
+                    border-radius: 5px;
+                    clicked => {on-options()}
+                }
+                Button {
+                    text: "Close";
+                    hover-background-color: #d35454;
+                    border-radius: 5px;
+                    clicked => {on-close()}
+                }
+            }
+        }
+    }
+}

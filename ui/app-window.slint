@@ -1,0 +1,40 @@
+import { Button } from "std-widgets.slint";
+import { OptionsButtons } from "widgets/OptionsButton.slint";
+
+export component AppWindow inherits Window {
+    callback close();
+
+    height: 200px;
+    width: 440px;
+    no-frame: true;
+    title: "Spotick";
+    background: rgba(0,0,0,0);
+
+    in-out property <length> window-x;
+    in-out property <length> window-y;
+
+    function move-window() {
+        window-x += (ta.current-position.x - ta.pressed-position.x);
+        window-y += (ta.current-position.y - ta.pressed-position.y);
+        position-window(window-x, window-y);
+    }
+    callback position-window(x: length, y: length);
+
+    ta := SwipeGestureHandler {
+        moved => {move-window()}
+        Rectangle {
+            background: @linear-gradient(130deg, #0a3018 0%, #0c612d 100%);
+            border-radius: 16px;
+
+            VerticalLayout {
+                HorizontalLayout {
+                    padding: 10px;
+                    alignment: LayoutAlignment.end;
+                    OptionsButtons {
+                        on-close => {close()}
+                    }
+                }
+            }
+        }
+    }
+}
