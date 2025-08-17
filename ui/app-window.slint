@@ -1,9 +1,6 @@
-import { Button } from "std-widgets.slint";
 import { OptionsButtons } from "widgets/OptionsButton.slint";
 
 export component AppWindow inherits Window {
-    callback close();
-
     height: 200px;
     width: 440px;
     no-frame: true;
@@ -12,12 +9,20 @@ export component AppWindow inherits Window {
 
     in-out property <length> window-x;
     in-out property <length> window-y;
+    out property <length> thumbnail-border-radius: 8px;
+    out property <image> thumbnail-placeholder: @image-url("assets/thumbnail-placeholder.png");
+    in property <image> thumbnail-img: thumbnail-placeholder;
+    in property <string> track-title: "No Track";
+    in property <string> track-subtitle: "...";
+    in property <bool> playing: false;
 
     function move-window() {
         window-x += (ta.current-position.x - ta.pressed-position.x);
         window-y += (ta.current-position.y - ta.pressed-position.y);
         position-window(window-x, window-y);
     }
+
+    callback close();
     callback position-window(x: length, y: length);
 
     ta := SwipeGestureHandler {
@@ -29,9 +34,33 @@ export component AppWindow inherits Window {
             VerticalLayout {
                 HorizontalLayout {
                     padding: 10px;
+                    padding-bottom: 0;
                     alignment: LayoutAlignment.end;
                     OptionsButtons {
                         on-close => {close()}
+                    }
+                }
+                HorizontalLayout {
+                    padding-left: 25px;
+                    padding-right: 10px;
+                    padding-top: 10px;
+                    spacing: 30px;
+                    Image {
+                        width: 128px;
+                        height: 128px;
+                        image-fit: ImageFit.fill;
+                        source: thumbnail-img;
+                    }
+                    VerticalLayout {
+                        alignment: LayoutAlignment.start;
+                        spacing: 5px;
+                        Text {
+                            text: track-title;
+                            font-size: 30px;
+                        }
+                        Text {
+                            text: track-subtitle;
+                        }
                     }
                 }
             }
