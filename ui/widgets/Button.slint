@@ -1,6 +1,41 @@
 export component Button inherits Rectangle {
     in property <brush> hover-background-color;
     in property <brush> background-color;
+    in property <bool> animate: false;
+
+    out property <bool> is-pressed: false;
+    property <float> animation-frac: 0.9;
+    property <length> original-width;
+    property <length> original-height;
+
+    init => {
+        original-height = self.height;
+        original-width = self.width;
+    }
+
+    function tap-animation-start() {
+        if (!animate || tap-timer.running) {return;}
+
+        original-height = self.height;
+        original-width = self.width;
+
+        self.width *= animation-frac;
+        self.height *= animation-frac;
+
+        tap-timer.running = true;
+    }
+
+    function tap-animation-end() {
+        tap-timer.running = false;
+        if (!animate) {return;}
+        self.width = original-width;
+        self.height = original-height;
+    }
+
+    pure function has-hover() -> bool {
+        return (ta.mouse-x <= ta.width && ta.mouse-x >= 0)
+            && (ta.mouse-y <= ta.height && ta.mouse-y >= 0);
+    }
 
     callback clicked();
 
@@ -9,7 +44,27 @@ export component Button inherits Rectangle {
 
     ta := TouchArea {
         mouse-cursor: MouseCursor.pointer;
-        clicked => {clicked()}
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                is-pressed = true;
+                tap-animation-start();
+            } else if event.kind == PointerEventKind.up {
+                is-pressed = false;
+                if has-hover() {
+                    clicked();
+                }
+            }
+        }
         @children
+    }
+
+    tap-timer := Timer {
+        interval: 50ms;
+        running: false;
+        triggered => {
+            if !is-pressed {
+                tap-animation-end();
+            }
+        }
     }
 }
