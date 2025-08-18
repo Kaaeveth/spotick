@@ -2,7 +2,7 @@ use image::RgbaImage;
 use slint::{Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer};
 use anyhow::Result;
 
-use crate::{callback, views::{apply_border_radius, UiPlaybackInformation}};
+use crate::{callback, ui::{apply_border_radius, UiPlaybackInformation}};
 
 slint::include_modules!();
 
@@ -12,8 +12,8 @@ pub struct MainWindow {
 
 impl MainWindow {
     pub fn new() -> Result<Self> {
-        let app = MainWindow { 
-            ui: AppWindow::new()? 
+        let app = MainWindow {
+            ui: AppWindow::new()?
         };
         app.enable_window_closing();
         app.enable_window_positioning();
@@ -80,18 +80,16 @@ impl UiPlaybackInformation for MainWindow {
         let image = Image::from_rgba8(buffer);
         self.ui.set_thumbnail_img(image);
     }
-    
-    fn set_title(&self, title: impl AsRef<str>) {
-        self.ui.set_track_title(title.as_ref().into());
+
+    fn set_title(&self, title: &str) {
+        self.ui.set_track_title(title.into());
     }
-    
-    fn set_subtitle(&self, subtitle: impl AsRef<str>) {
-        self.ui.set_track_subtitle(subtitle.as_ref().into());
+
+    fn set_subtitle(&self, subtitle: &str) {
+        self.ui.set_track_subtitle(subtitle.into());
     }
-    
+
     fn set_playing(&self, playing: bool) {
         self.ui.set_playing(playing);
     }
-
-    
 }

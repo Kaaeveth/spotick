@@ -3,10 +3,10 @@
 
 use anyhow::Result;
 
-use crate::views::window::MainWindow;
+use crate::ui::window::MainWindow;
 
 mod viewmodel;
-mod views;
+mod ui;
 
 fn main() -> Result<()> {
     let app = MainWindow::new()?;
