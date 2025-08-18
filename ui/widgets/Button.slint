@@ -9,18 +9,23 @@ export component Button inherits Rectangle {
     property <length> original-height;
 
     init => {
-        original-height = self.height;
-        original-width = self.width;
+        original-height = btn.height;
+        original-width = btn.width;
     }
 
+    // Animates the button by reducing its size for a short time.
+    // tap-animation-end restores the original button appearance.
     function tap-animation-start() {
         if (!animate || tap-timer.running) {return;}
 
-        original-height = self.height;
-        original-width = self.width;
+        original-height = btn.height;
+        original-width = btn.width;
 
-        self.width *= animation-frac;
-        self.height *= animation-frac;
+        btn.width *= animation-frac;
+        btn.height *= animation-frac;
+        // Shift the position so the btn stays centered
+        btn.x = (original-width - btn.width) / 2;
+        btn.y = (original-height - btn.height) / 2;
 
         tap-timer.running = true;
     }
@@ -28,8 +33,10 @@ export component Button inherits Rectangle {
     function tap-animation-end() {
         tap-timer.running = false;
         if (!animate) {return;}
-        self.width = original-width;
-        self.height = original-height;
+        btn.width = original-width;
+        btn.height = original-height;
+        btn.x = 0;
+        btn.y = 0;
     }
 
     pure function has-hover() -> bool {
@@ -42,20 +49,22 @@ export component Button inherits Rectangle {
     background: ta.has-hover ? hover-background-color : background-color;
     accessible-role: button;
 
-    ta := TouchArea {
-        mouse-cursor: MouseCursor.pointer;
-        pointer-event(event) => {
-            if event.kind == PointerEventKind.down {
-                is-pressed = true;
-                tap-animation-start();
-            } else if event.kind == PointerEventKind.up {
-                is-pressed = false;
-                if has-hover() {
-                    clicked();
+    btn := Rectangle {
+        ta := TouchArea {
+            mouse-cursor: MouseCursor.pointer;
+            pointer-event(event) => {
+                if event.kind == PointerEventKind.down {
+                    is-pressed = true;
+                    tap-animation-start();
+                } else if event.kind == PointerEventKind.up {
+                    is-pressed = false;
+                    if has-hover() {
+                        clicked();
+                    }
                 }
             }
+            @children
         }
-        @children
     }
 
     tap-timer := Timer {

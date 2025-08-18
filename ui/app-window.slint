@@ -79,12 +79,9 @@ export component AppWindow inherits Window {
                                     clicked => {previousTrack()}
                                 }
                             }
-                            VerticalLayout {
-                                alignment: LayoutAlignment.center;
-                                MediaButton {
-                                    clicked => {togglePlay();}
-                                    btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
-                                }
+                            MediaButton {
+                                clicked => {togglePlay();}
+                                btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
                             }
                             VerticalLayout {
                                 alignment: LayoutAlignment.center;
