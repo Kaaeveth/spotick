@@ -1,4 +1,5 @@
-import { OptionsButtons } from "widgets/OptionsButton.slint";
+import { OptionsButton } from "widgets/OptionsButton.slint";
+import { MediaButton, MediaButtonType } from "widgets/MediaButton.slint";
 
 export component AppWindow inherits Window {
     height: 200px;
@@ -24,6 +25,9 @@ export component AppWindow inherits Window {
 
     callback close();
     callback position-window(x: length, y: length);
+    callback togglePlay();
+    callback nextTrack();
+    callback previousTrack();
 
     ta := SwipeGestureHandler {
         moved => {move-window()}
@@ -36,7 +40,7 @@ export component AppWindow inherits Window {
                     padding: 10px;
                     padding-bottom: 0;
                     alignment: LayoutAlignment.end;
-                    OptionsButtons {
+                    OptionsButton {
                         on-close => {close()}
                     }
                 }
@@ -60,6 +64,33 @@ export component AppWindow inherits Window {
                         }
                         Text {
                             text: track-subtitle;
+                        }
+                        Rectangle {
+                            height: 20px;
+                            
+                        }
+                        HorizontalLayout {
+                            spacing: 25px;
+                            VerticalLayout {
+                                alignment: LayoutAlignment.center;
+                                MediaButton {
+                                    btn-type: MediaButtonType.Previous;
+                                    size: 30px;
+                                    clicked => {previousTrack()}
+                                }
+                            }
+                            MediaButton {
+                                clicked => {togglePlay();}
+                                btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
+                            }
+                            VerticalLayout {
+                                alignment: LayoutAlignment.center;
+                                MediaButton {
+                                    btn-type: MediaButtonType.Next;
+                                    size: 30px;
+                                    clicked => {nextTrack()}
+                                }
+                            }
                         }
                     }
                 }

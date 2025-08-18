@@ -1,16 +1,19 @@
 import { Button } from "Button.slint";
-export component OptionsButtons inherits Button {
+export component OptionsButton inherits Button {
     width: 20px;
     height: 20px;
-    text: "⁝";
     border-radius: 20px;
-    font-size: 16px;
 
     callback on-close();
     callback on-options();
 
     clicked => {
         options.show();
+    }
+
+    Text {
+        text: "⁝";
+        font-size: 16px;
     }
 
     options := PopupWindow {
@@ -26,16 +29,20 @@ export component OptionsButtons inherits Button {
             VerticalLayout {
                 padding: 7px;
                 Button {
-                    text: "Options";
                     hover-background-color: #20772f;
                     border-radius: 5px;
                     clicked => {on-options()}
+                    Text {
+                        text: "Options";
+                    }
                 }
                 Button {
-                    text: "Close";
                     hover-background-color: #d35454;
                     border-radius: 5px;
                     clicked => {on-close()}
+                    Text {
+                        text: "Close";
+                    }
                 }
             }
         }
