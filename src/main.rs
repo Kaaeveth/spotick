@@ -3,13 +3,15 @@
 
 use anyhow::Result;
 
-use crate::ui::window::MainWindow;
+use crate::ui::{init_backend, window::{MainWindow, SettingsWindow}};
 
-mod viewmodel;
 mod ui;
 
 fn main() -> Result<()> {
-    let app = MainWindow::new()?;
+    init_backend()?;
+
+    let settings = SettingsWindow::new()?;
+    let app = MainWindow::new(settings)?;
     app.run_blocking()?;
     Ok(())
 }

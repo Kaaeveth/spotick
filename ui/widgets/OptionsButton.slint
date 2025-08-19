@@ -31,7 +31,10 @@ export component OptionsButton inherits Button {
                 Button {
                     hover-background-color: #20772f;
                     border-radius: 5px;
-                    clicked => {on-options()}
+                    clicked => {
+                        options.close();
+                        on-options();
+                    }
                     Text {
                         text: "Options";
                     }

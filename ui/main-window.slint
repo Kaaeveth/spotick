@@ -1,7 +1,10 @@
 import { OptionsButton } from "widgets/OptionsButton.slint";
 import { MediaButton, MediaButtonType } from "widgets/MediaButton.slint";
+import { SlintSettingsWindow } from "settings-window.slint";
 
-export component AppWindow inherits Window {
+export { SlintSettingsWindow }
+
+export component SlintMainWindow inherits Window {
     height: 200px;
     width: 440px;
     no-frame: true;
@@ -23,7 +26,8 @@ export component AppWindow inherits Window {
         position-window(window-x, window-y);
     }
 
-    callback close();
+    callback quit();
+    callback show-options();
     callback position-window(x: length, y: length);
     callback togglePlay();
     callback nextTrack();
@@ -41,7 +45,8 @@ export component AppWindow inherits Window {
                     padding-bottom: 0;
                     alignment: LayoutAlignment.end;
                     OptionsButton {
-                        on-close => {close()}
+                        on-close => {quit()}
+                        on-options => {show-options()}
                     }
                 }
                 HorizontalLayout {

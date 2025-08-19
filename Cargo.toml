@@ -9,8 +9,9 @@ description = "Simple and lightweight Windows widget for Spotify"
 
 [dependencies]
 anyhow = "1.0.99"
+i-slint-backend-winit = "1.12.1"
 image = "0.25.6"
-slint = { version = "1.12.1", features = ["renderer-winit-skia"] }
+slint = { version = "1.12.1", default-features = false, features = ["accessibility", "std", "compat-1-2", "renderer-skia", "backend-winit"] }
 
 [build-dependencies]
 slint-build = "1.12.1"

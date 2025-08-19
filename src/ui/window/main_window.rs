@@ -1,31 +1,50 @@
+use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
-use slint::{Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer};
+use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer};
 use anyhow::Result;
 
-use crate::{callback, ui::{apply_border_radius, UiPlaybackInformation}};
-
-slint::include_modules!();
+use crate::{callback, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
 
 pub struct MainWindow {
-    ui: AppWindow
+    ui: SlintMainWindow,
+    settings_window: SettingsWindow
 }
 
 impl MainWindow {
-    pub fn new() -> Result<Self> {
+    pub fn new(settings: SettingsWindow) -> Result<Self> {
+        get_window_creation_settings().change(|attr| {
+            attr.with_skip_taskbar(true)
+        });
         let app = MainWindow {
-            ui: AppWindow::new()?
+            ui: SlintMainWindow::new()?,
+            settings_window: settings
         };
-        app.enable_window_closing();
+
+        app.enable_app_quit();
         app.enable_window_positioning();
         app.set_initial_thumbnail();
+        app.setup_ui_callbacks();
+        
         Ok(app)
     }
 
     /// Start the main window event loop and
     /// shows the window. Blocks until the window closes.
     pub fn run_blocking(&self) -> Result<()> {
-        self.ui.run()?;
+        self.ui.show()?;
+        slint::run_event_loop()?;
+        self.ui.hide()?;
         Ok(())
+    }
+
+    fn setup_ui_callbacks(&self) {
+        let _app = &self.ui;
+        let settings_window = self.settings_window.as_weak();
+
+        callback!(on_show_options, |_app| {
+            let settings_window = settings_window.unwrap();
+            let _ = settings_window.show();
+        });
     }
 
     fn enable_window_positioning(&self) {
@@ -40,10 +59,10 @@ impl MainWindow {
         });
     }
 
-    fn enable_window_closing(&self) {
-        let app = &self.ui;
-        callback!(on_close, |app| {
-            app.window().dispatch_event(slint::platform::WindowEvent::CloseRequested);
+    fn enable_app_quit(&self) {
+        let _app = &self.ui;
+        callback!(on_quit, |_app| {
+            let _ = slint::quit_event_loop();
         });
     }
 
@@ -65,9 +84,7 @@ impl MainWindow {
 
         self.set_thumbnail(buffer);
     }
-}
 
-impl UiPlaybackInformation for MainWindow {
     fn set_thumbnail(&self, mut img: RgbaImage) {
         // Apply image decorations
         apply_border_radius(&mut img, self.ui.get_thumbnail_border_radius() as u32);
@@ -80,16 +97,10 @@ impl UiPlaybackInformation for MainWindow {
         let image = Image::from_rgba8(buffer);
         self.ui.set_thumbnail_img(image);
     }
+}
 
-    fn set_title(&self, title: &str) {
-        self.ui.set_track_title(title.into());
-    }
-
-    fn set_subtitle(&self, subtitle: &str) {
-        self.ui.set_track_subtitle(subtitle.into());
-    }
-
-    fn set_playing(&self, playing: bool) {
-        self.ui.set_playing(playing);
+impl Window<SlintMainWindow> for MainWindow {
+    fn component(&self) -> &SlintMainWindow {
+        &self.ui
     }
 }

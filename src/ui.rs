@@ -1,12 +1,32 @@
 pub mod window;
 
 use image::RgbaImage;
+use anyhow::Result;
 
-pub trait UiPlaybackInformation {
-    fn set_thumbnail(&self, img: RgbaImage);
-    fn set_title(&self, title: &str);
-    fn set_subtitle(&self, subtitle: &str);
-    fn set_playing(&self, playing: bool);
+use crate::ui::window::get_window_creation_settings;
+
+#[macro_export]
+macro_rules! callback {
+    ($prop:ident, |$app_ref:ident $(,)? $( $params:ident ),*| $handler:block) => {{
+        $app_ref.$prop({
+            let app_weak = $app_ref.as_weak();
+            move |$( $params ),*| {
+                let $app_ref = app_weak.unwrap();
+                $handler
+            }
+        });
+    }};
+}
+
+pub fn init_backend() -> Result<()> {
+    let window_backend = i_slint_backend_winit::Backend::builder()
+        .with_window_attributes_hook({
+            let settings = get_window_creation_settings();
+            move |_| settings.get_settings()
+        })
+        .build()?;
+    slint::platform::set_platform(Box::new(window_backend))?;
+    Ok(())
 }
 
 /// Rounds the corners of [img] with the given [radius].
