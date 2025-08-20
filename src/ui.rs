@@ -20,10 +20,7 @@ macro_rules! callback {
 
 pub fn init_backend() -> Result<()> {
     let window_backend = i_slint_backend_winit::Backend::builder()
-        .with_window_attributes_hook({
-            let settings = get_window_creation_settings();
-            move |_| settings.get_settings()
-        })
+        .with_window_attributes_hook(|_| get_window_creation_settings().get_settings())
         .build()?;
     slint::platform::set_platform(Box::new(window_backend))?;
     Ok(())
