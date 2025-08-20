@@ -12,7 +12,7 @@ pub struct MainWindow {
 
 impl MainWindow {
     pub fn new(settings: SettingsWindow) -> Result<Self> {
-        get_window_creation_settings().change(|attr| {
+        let _guard_settings = get_window_creation_settings().change(|attr| {
             attr.with_skip_taskbar(true)
         });
         let app = MainWindow {

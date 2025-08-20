@@ -14,9 +14,9 @@ pub struct WindowCreationSettings {
     inner: Rc<RefCell<InnerCreationSettings>>
 }
 
-pub struct InnerCreationSettings {
-    pub(crate) default_settings: WindowAttributes,
-    pub(crate) current_settings: WindowAttributes
+struct InnerCreationSettings {
+    default_settings: WindowAttributes,
+    current_settings: WindowAttributes
 }
 
 impl WindowCreationSettings {
@@ -32,10 +32,15 @@ impl WindowCreationSettings {
         }
     }
 
-    pub fn change(&self, change: impl Fn(WindowAttributes) -> WindowAttributes + 'static) {
+    pub fn change(&self, change: impl Fn(WindowAttributes) -> WindowAttributes + 'static) -> SettingsChangedGuard {
         let mut attr = self.inner.borrow_mut();
         let new_attr = change(attr.default_settings.clone());
+        let guard = SettingsChangedGuard { 
+            settings: self.clone(),
+            old_settings: Some(attr.current_settings.clone())
+        };
         (*attr).current_settings = new_attr;
+        guard
     }
 
     pub fn get_settings(&self) -> WindowAttributes {
@@ -46,5 +51,23 @@ impl WindowCreationSettings {
 impl Clone for WindowCreationSettings {
     fn clone(&self) -> Self {
         WindowCreationSettings { inner: self.inner.clone() }
+    }
+}
+
+/// A guard to revert changes made with [WindowCreationSettings::change].
+/// If this gets dropped, the current window creation settings
+/// will be reverted to the previous ones.
+pub struct SettingsChangedGuard {
+    settings: WindowCreationSettings,
+    old_settings: Option<WindowAttributes>
+}
+
+impl Drop for SettingsChangedGuard {
+    fn drop(&mut self) {
+        // Borrowing may only fail if the guard is being dropped inside of a WindowCreationSettings::change
+        // callback, which should not happen anyway.
+        if let Ok(mut inner) = self.settings.inner.try_borrow_mut() {
+            inner.current_settings = self.old_settings.take().unwrap();
+        }
     }
 }

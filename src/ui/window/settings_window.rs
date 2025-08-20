@@ -8,7 +8,7 @@ pub struct SettingsWindow {
 
 impl SettingsWindow {
     pub fn new() -> Result<Self> {
-        get_window_creation_settings().change(|attr| {
+        let _settings_guard = get_window_creation_settings().change(|attr| {
             attr.with_enabled_buttons(WindowButtons::CLOSE)
         });
         Ok(SettingsWindow { 
