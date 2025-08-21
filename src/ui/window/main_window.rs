@@ -32,7 +32,7 @@ impl MainWindow {
     /// shows the window. Blocks until the window closes.
     pub fn run_blocking(&self) -> Result<()> {
         self.ui.show()?;
-        slint::run_event_loop()?;
+        tokio::task::block_in_place(slint::run_event_loop)?;
         self.ui.hide()?;
         Ok(())
     }

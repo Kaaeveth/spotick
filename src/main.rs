@@ -7,11 +7,13 @@ use crate::ui::{init_backend, window::{MainWindow, SettingsWindow}};
 
 mod ui;
 
-fn main() -> Result<()> {
+#[tokio::main(worker_threads = 3)]
+async fn main() -> Result<()> {
     init_backend()?;
 
     let settings = SettingsWindow::new()?;
     let app = MainWindow::new(settings)?;
+
     app.run_blocking()?;
     Ok(())
 }
