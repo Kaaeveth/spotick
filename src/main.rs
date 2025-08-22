@@ -6,9 +6,11 @@ use anyhow::Result;
 use crate::ui::{init_backend, window::{MainWindow, SettingsWindow}};
 
 mod ui;
+mod auth;
+mod util;
+mod settings;
 
-#[tokio::main(worker_threads = 3)]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     init_backend()?;
 
     let settings = SettingsWindow::new()?;
