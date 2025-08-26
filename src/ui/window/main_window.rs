@@ -3,7 +3,7 @@ use image::RgbaImage;
 use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer};
 use anyhow::Result;
 
-use crate::{callback, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
+use crate::{callback, service::BaseService, settings, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
 
 pub struct MainWindow {
     ui: SlintMainWindow,
@@ -20,6 +20,7 @@ impl MainWindow {
             settings_window: settings
         };
 
+        app.connect_settings();
         app.enable_app_quit();
         app.enable_window_positioning();
         app.set_initial_thumbnail();
@@ -44,6 +45,25 @@ impl MainWindow {
         callback!(on_show_options, |_app| {
             let settings_window = settings_window.unwrap();
             let _ = settings_window.show();
+        });
+    }
+
+    fn connect_settings(&self) {
+        let settings = self.settings_window.get_settings();
+        let wui = self.as_weak();
+        tokio::spawn(async move {
+            let settings = settings.clone();
+            let mut settings_recv = settings.read().await.subscribe();
+            loop {
+                let always_on_top = settings.read().await.get_settings().always_on_top;
+
+                let _ = wui.upgrade_in_event_loop(move |ui| {
+                    ui.set_on_top(always_on_top);
+                });
+                if let Err(_) = settings_recv.recv().await {
+                    break;
+                }
+            }
         });
     }
 

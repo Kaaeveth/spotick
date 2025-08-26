@@ -14,10 +14,10 @@ export component SlintSettingsWindow inherits Window {
     background: #1c1c1c;
 
     in-out property <bool> auto-start <=> auto-start-switch.checked;
+    in-out property <bool> always-top <=> on-top-switch.checked;
     in-out property <string> media-application-id: "";
 
-    callback set-media-application(app: string);
-    callback auto-start-changed <=> auto-start-switch.toggled;
+    callback settings-changed();
 
     VerticalLayout {
         padding: 15px;
@@ -26,7 +26,15 @@ export component SlintSettingsWindow inherits Window {
             spacing: 10px;
             Row {
                 SettingsText {text: "Autostart";}
-                auto-start-switch := Switch {}
+                auto-start-switch := Switch {
+                    toggled => {settings-changed()}
+                }
+            }
+            Row {
+                SettingsText {text: "Always on top";}
+                on-top-switch := Switch {
+                    toggled => {settings-changed()}
+                }
             }
             Row {
                 SettingsText {text: "Media application";}
@@ -41,7 +49,7 @@ export component SlintSettingsWindow inherits Window {
                     border-radius: 4px;
                     clicked => {
                         if !media-application-id.is-empty {
-                            set-media-application(media-application-id);
+                            settings-changed();
                         }
                     }
                     Text {

@@ -31,9 +31,11 @@ impl SettingsWindow {
             let wui = wui;
             let mut setting_evs = settings.read().await.subscribe();
             loop {
-                let settings = settings.read().await.get_settings().clone();
+                let settings = settings.clone().read_owned().await;
                 if let Err(_) = wui.upgrade_in_event_loop(move |ui| {
+                    let settings = settings.get_settings();
                     ui.set_auto_start(settings.auto_start);
+                    ui.set_always_top(settings.always_on_top);
                     ui.set_media_application_id(settings.source_app.to_shared_string());
                 }) 
                 {
@@ -47,32 +49,32 @@ impl SettingsWindow {
         });
     }
 
-    #[allow(unused_variables)]
+    pub fn get_settings(&self) -> SpotickAppSettings {
+        self.app_settings.clone()
+    }
+
     fn setup_callbacks(&self) {
         let ui = &self.ui;
         
         let settings = self.app_settings.clone();
-        callback!(on_auto_start_changed, |ui|{
-            let auto_start = ui.get_auto_start();
+        callback!(on_settings_changed, |ui|{
             let settings = settings.clone();
-            tokio::spawn(async move {
-                let mut sw = settings.write().await;
-                sw.get_settings_mut().auto_start = auto_start;
-                if let Err(e) = sw.save().await {
-                    log::error!("Failed to set auto_start: {}", e);
-                }
-            });
-        });
 
-        let settings = self.app_settings.clone();
-        callback!(on_set_media_application, |ui, source_app|{
-            let source_app = source_app.to_string();
-            let settings = settings.clone();
+            let auto_start = ui.get_auto_start();
+            let always_on_top = ui.get_always_top();
+            let source_id = ui.get_media_application_id().to_string();
+
             tokio::spawn(async move {
-                let mut sw = settings.write().await;
-                sw.get_settings_mut().source_app = source_app;
-                if let Err(e) = sw.save().await {
-                    log::error!("Failed to set media_application: {}", e);
+                let mut sg = settings.write().await;
+                {
+                    let settings = sg.get_settings_mut();
+                    settings.auto_start = auto_start;
+                    settings.always_on_top = always_on_top;
+                    settings.source_app = source_id;
+                    log::info!("{:?}", settings);
+                }
+                if let Err(e) = sg.save().await {
+                    log::error!("Failed to save settings: {}", e);
                 }
             });
         });

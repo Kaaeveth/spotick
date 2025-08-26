@@ -19,6 +19,7 @@ export component SlintMainWindow inherits Window {
     in property <string> track-title: "No Track";
     in property <string> track-subtitle: "...";
     in property <bool> playing: false;
+    in-out property <bool> on-top <=> self.always-on-top;
 
     function move-window() {
         window-x += (ta.current-position.x - ta.pressed-position.x);
@@ -29,9 +30,9 @@ export component SlintMainWindow inherits Window {
     callback quit();
     callback show-options();
     callback position-window(x: length, y: length);
-    callback togglePlay();
-    callback nextTrack();
-    callback previousTrack();
+    callback toggle-play();
+    callback next-track();
+    callback previous-track();
 
     ta := SwipeGestureHandler {
         moved => {move-window()}
@@ -81,11 +82,11 @@ export component SlintMainWindow inherits Window {
                                 MediaButton {
                                     btn-type: MediaButtonType.Previous;
                                     size: 30px;
-                                    clicked => {previousTrack()}
+                                    clicked => {previous-track()}
                                 }
                             }
                             MediaButton {
-                                clicked => {togglePlay();}
+                                clicked => {toggle-play();}
                                 btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
                             }
                             VerticalLayout {
@@ -93,7 +94,7 @@ export component SlintMainWindow inherits Window {
                                 MediaButton {
                                     btn-type: MediaButtonType.Next;
                                     size: 30px;
-                                    clicked => {nextTrack()}
+                                    clicked => {next-track()}
                                 }
                             }
                         }
