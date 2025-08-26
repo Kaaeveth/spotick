@@ -19,4 +19,3 @@ where
         self.component().as_weak()
     }
 }
-

@@ -1,6 +1,5 @@
 import { Button } from "widgets/button.slint";
-import { Switch } from "widgets/switch.slint";
-import { LineEdit } from "std-widgets.slint";
+import { LineEdit, Switch } from "std-widgets.slint";
 
 component SettingsText inherits Text {
     font-size: 1.2rem;
@@ -14,6 +13,12 @@ export component SlintSettingsWindow inherits Window {
     height: 300px;
     background: #1c1c1c;
 
+    in-out property <bool> auto-start <=> auto-start-switch.checked;
+    in-out property <string> media-application-id: "";
+
+    callback set-media-application(app: string);
+    callback auto-start-changed <=> auto-start-switch.toggled;
+
     VerticalLayout {
         padding: 15px;
         alignment: LayoutAlignment.start;
@@ -21,17 +26,24 @@ export component SlintSettingsWindow inherits Window {
             spacing: 10px;
             Row {
                 SettingsText {text: "Autostart";}
-                Switch {}
+                auto-start-switch := Switch {}
             }
             Row {
                 SettingsText {text: "Media application";}
-                LineEdit {}
+                LineEdit {
+                    text <=> media-application-id;
+                }
                 Button {
                     background-color: gray.darker(0.7);
                     hover-background-color: gray.darker(0.9);
                     width: 80px;
                     height: 30px;
                     border-radius: 4px;
+                    clicked => {
+                        if !media-application-id.is-empty {
+                            set-media-application(media-application-id);
+                        }
+                    }
                     Text {
                         text: "Confirm";
                         font-size: 1.5rem;
