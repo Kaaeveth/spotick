@@ -234,33 +234,39 @@ impl BaseService<PlaybackChangedEvent> for WindowsMediaService {
     }
 }
 
+macro_rules! wait_async_op {
+    ($async_op:expr) => {
+        let x = $async_op;
+        tokio::task::spawn_blocking(move || x.get()).await.unwrap()?
+    };
+}
+
 #[async_trait::async_trait]
-// TODO: Call session methods on tokio task and handle error
 impl MediaService for WindowsMediaService {
     async fn next_track(&mut self) -> Result<(), MediaServiceError> {
         if let Some(session) = &self.source_session {
-            let _ = session.TrySkipNextAsync()?;
+            wait_async_op!(session.TrySkipNextAsync()?);
         }
         Ok(())
     }
 
     async fn previous_track(&mut self) -> Result<(), MediaServiceError> {
         if let Some(session) = &self.source_session {
-            let _ = session.TrySkipPreviousAsync()?;
+            wait_async_op!(session.TrySkipPreviousAsync()?);
         }
         Ok(())
     }
 
     async fn play(&mut self) -> Result<(), MediaServiceError> {
         if let Some(session) = &self.source_session {
-            let _ = session.TryPlayAsync()?;
+            wait_async_op!(session.TryPlayAsync()?);
         }
         Ok(())
     }
 
     async fn pause(&mut self) -> Result<(), MediaServiceError> {
         if let Some(session) = &self.source_session {
-            let _ = session.TryPauseAsync()?;
+            wait_async_op!(session.TryPauseAsync()?);
         }
         Ok(())
     }
