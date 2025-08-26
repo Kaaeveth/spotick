@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
@@ -10,8 +10,6 @@ pub struct AppSettings<S> {
 
 #[cfg(windows)]
 fn get_default_save_path() -> PathBuf {
-    use std::path::Path;
-
     static RELATIVE_SAVE_PATH: &'static str = concat!(env!("CARGO_PKG_NAME"), "/settings.json");
     let app_data = std::env::var("APPDATA").expect("APPDATA should be present");
 

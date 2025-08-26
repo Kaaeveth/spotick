@@ -1,21 +1,51 @@
 // Prevent console window in addition to Slint window in Windows release builds when, e.g., starting the app via file manager. Ignored on other platforms.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![allow(dead_code)]
 
 use anyhow::Result;
 
-use crate::ui::{init_backend, window::{MainWindow, SettingsWindow}};
+use crate::{service::{BaseService, MediaService, PlaybackChangedEvent, WindowsMediaService}, ui::{init_backend, window::{MainWindow, SettingsWindow}}};
 
 mod ui;
-mod auth;
-mod util;
 mod settings;
+mod service;
 
-fn main() -> Result<()> {
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+async fn main() -> Result<()> {
+    env_logger::init();
     init_backend()?;
 
-    let settings = SettingsWindow::new()?;
-    let app = MainWindow::new(settings)?;
+    let win_media_service = WindowsMediaService::new("spotify.exe");
+    win_media_service.write().await.begin_monitor_sessions()?;
 
-    app.run_blocking()?;
+    // Print media events when in debug mode
+    #[cfg(debug_assertions)]
+    {
+        let mut ev = win_media_service.read().await.subscribe();
+        let srv = win_media_service.clone();
+        tokio::spawn(async move {
+            loop {
+                let Ok(e) = ev.recv().await else {
+                    continue;
+                };
+
+                match e.event {
+                    PlaybackChangedEvent::Play | PlaybackChangedEvent::Pause => {
+                        log::info!("{:?}", srv.read().await.current_playback_state());
+                    },
+                    PlaybackChangedEvent::TrackChanged => {
+                        log::info!("{:?}", srv.read().await.current_track());
+                    },
+                    _ => {}
+                }
+            }
+        });
+    }
+
+    let settings_window = SettingsWindow::new()?;
+    let main_window = MainWindow::new(settings_window)?;
+
+    main_window.run_blocking()?;
     Ok(())
 }

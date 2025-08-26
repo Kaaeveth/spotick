@@ -10,3 +10,6 @@ rustflags = [
 rustflags = [
     "-C", "link-arg=/STACK:8000000"
 ]
+
+[env]
+RUST_LOG = "info"
