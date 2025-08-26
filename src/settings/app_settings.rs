@@ -1,10 +1,15 @@
-use std::path::{PathBuf, Path};
+use std::{path::{Path, PathBuf}, sync::{Weak, Arc}};
 
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
+use anyhow::{bail, Result};
+use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
+
+use crate::service::BaseService;
 
 pub struct AppSettings<S> {
+    self_ref: Weak<RwLock<AppSettings<S>>>,
     save_path: PathBuf,
+    event_sender: Sender<()>,
     settings: S
 }
 
@@ -18,20 +23,26 @@ fn get_default_save_path() -> PathBuf {
 
 impl<S> AppSettings<S>
 where 
-    S: Serialize + for<'de> Deserialize<'de> + Default + 'static
+    S: Serialize + for<'de> Deserialize<'de> + Default + Send + Sync
 {
-    pub fn default() -> Result<Self> {
+    pub fn default() -> Result<Arc<RwLock<Self>>> {
         let save_path = get_default_save_path();
         AppSettings::<S>::new(save_path)
     }
 
-    pub fn new(save_path: impl Into<PathBuf>) -> Result<Self> {
+    pub fn new(save_path: impl Into<PathBuf>) -> Result<Arc<RwLock<Self>>> {
         let save_path = save_path.into();
         std::fs::create_dir_all(&save_path.parent().unwrap())?;
-        Ok(AppSettings {
-            save_path,
-            settings: S::default()
-        })
+        let settings = Arc::new_cyclic(|w| {
+            let (tx, _) = channel(16);
+            RwLock::new(AppSettings{
+                save_path,
+                self_ref: w.clone(),
+                event_sender: tx,
+                settings: S::default()
+            })
+        });
+        Ok(settings)
     }
 
     pub fn get_settings(&self) -> &S {
@@ -42,18 +53,43 @@ where
         &mut self.settings
     }
 
+    pub fn notify_settings_changed(&self) {
+        let _ = self.event_sender.send(());
+    }
+
     /// Writes the current settings to disk
     pub async fn save(&self) -> Result<()> {
         let json = serde_json::to_string_pretty(&self.settings)?;
         tokio::fs::write(&self.save_path, json).await?;
+        self.notify_settings_changed();
         Ok(())
     }
 
     /// Loads the settings from disk, overriding the currently loaded ones.
+    /// Does nothing if the file doesn't exist.
     pub async fn load(&mut self) -> Result<()> {
-        let file_contents = tokio::fs::read(&self.save_path).await?;
+        let file_contents = tokio::fs::read(&self.save_path).await;
+        let file_contents = match file_contents {
+            Ok(res) => res,
+            Err(e) => {
+                match e.kind() {
+                    std::io::ErrorKind::NotFound => return Ok(()),
+                    _ => bail!(e)
+                }
+            }
+        };
         self.settings = serde_json::from_slice::<S>(&file_contents)?;
+        self.notify_settings_changed();
         Ok(())
+    }
+}
+
+impl<S> BaseService<()> for AppSettings<S> 
+where 
+    S: Send + Sync
+{
+    fn subscribe(&self) -> Receiver<()> {
+        self.event_sender.subscribe()
     }
 }
 
@@ -96,10 +132,10 @@ mod test {
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn empty_settings(ctx: &mut Context) -> Result<()> {
         let app_settings = AppSettings::new(&ctx.path)?;
-        app_settings.save().await?;
+        app_settings.write().await.save().await?;
         let json = std::fs::read(&ctx.path)?;
         let settings = serde_json::from_slice::<TestSettings>(&json)?;
-        ensure!(&settings == app_settings.get_settings(), "Default settings differ");
+        ensure!(&settings == app_settings.read().await.get_settings(), "Default settings differ");
         Ok(())
     }
 
@@ -110,20 +146,27 @@ mod test {
         assert_eq!(default_path, PathBuf::from("C:\\Users\\test\\AppData\\Roaming\\spotick\\settings.json"));
     }
 
+    #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+    async fn load_non_existing() -> Result<()> {
+        let app_settings = AppSettings::<TestSettings>::new("test.json")?;
+        app_settings.write().await.load().await?;
+        Ok(())
+    }
+ 
     #[test_context(Context)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn simple_setting(ctx: &mut Context) -> Result<()> {
         {
-            let mut settings = AppSettings::<TestSettings>::new(&ctx.path)?;
-            settings.get_settings_mut().nice = true;
-            settings.get_settings_mut().hello = "world".into();
-            settings.save().await?;
+            let settings = AppSettings::<TestSettings>::new(&ctx.path)?;
+            settings.write().await.get_settings_mut().nice = true;
+            settings.write().await.get_settings_mut().hello = "world".into();
+            settings.write().await.save().await?;
         }
 
-        let mut settings = AppSettings::<TestSettings>::new(&ctx.path)?;
-        settings.load().await?;
-        ensure!(settings.get_settings().nice, "Expected true");
-        ensure!(&settings.get_settings().hello == "world", "Expected true");
+        let settings = AppSettings::<TestSettings>::new(&ctx.path)?;
+        settings.write().await.load().await?;
+        ensure!(settings.read().await.get_settings().nice, "Expected true");
+        ensure!(&settings.read().await.get_settings().hello == "world", "Expected true");
         Ok(())
     }
 }

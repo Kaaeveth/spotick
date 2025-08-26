@@ -6,7 +6,7 @@ use windows::{core::{Result as WinResult, HSTRING}, Foundation::TypedEventHandle
 }, Storage::Streams::IRandomAccessStreamReference};
 use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
 
-use crate::service::{media_service::{AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent, PlaybackState}, BaseService, ServiceEvent};
+use crate::service::{media_service::{AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent, PlaybackState}, BaseService};
 
 type WinRtHandle = Option<NonZero<i64>>;
 
@@ -25,7 +25,7 @@ pub struct WindowsMediaService {
     source_session: Option<GlobalSystemMediaTransportControlsSession>,
     current_track: Option<MediaTrack>,
     playback_state: PlaybackState,
-    event_sender: Sender<ServiceEvent<PlaybackChangedEvent>>
+    event_sender: Sender<PlaybackChangedEvent>
 }
 
 fn unwrap_hstring(hstring: WinResult<HSTRING>, default: impl Into<String>) -> String {
@@ -93,10 +93,7 @@ impl WindowsMediaService {
     }
 
     fn send_event(&self, ev: PlaybackChangedEvent) {
-        let _ = self.event_sender.send(ServiceEvent {
-            sender: self.self_ref.clone(),
-            event: ev
-        });
+        let _ = self.event_sender.send(ev);
     }
 
     /// Starts monitoring for the media session identified by its source app id.
@@ -229,7 +226,7 @@ impl Drop for WindowsMediaService {
 }
 
 impl BaseService<PlaybackChangedEvent> for WindowsMediaService {
-    fn subscribe(&self) -> Receiver<ServiceEvent<PlaybackChangedEvent>> {
+    fn subscribe(&self) -> Receiver<PlaybackChangedEvent> {
         self.event_sender.subscribe()
     }
 }
