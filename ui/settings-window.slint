@@ -1,19 +1,11 @@
 import { Button } from "widgets/button.slint";
 import { Switch } from "widgets/switch.slint";
+import { LineEdit } from "std-widgets.slint";
 
 component SettingsText inherits Text {
     font-size: 1.2rem;
     vertical-alignment: TextVerticalAlignment.center;
     horizontal-alignment: TextHorizontalAlignment.left;
-}
-
-component SettingsRow inherits Rectangle {
-    in property <string> name;
-    HorizontalLayout {
-        alignment: LayoutAlignment.space-between;
-        SettingsText {text: name;}
-        @children
-    }
 }
 
 export component SlintSettingsWindow inherits Window {
@@ -22,15 +14,18 @@ export component SlintSettingsWindow inherits Window {
     height: 300px;
     background: #1c1c1c;
 
-    HorizontalLayout {
-        alignment: LayoutAlignment.start;
+    VerticalLayout {
         padding: 15px;
-        VerticalLayout {
-            width: 50%;
-            spacing: 15px;
-            alignment: LayoutAlignment.start;
-            SettingsRow {
-                name: "Spotify";
+        alignment: LayoutAlignment.start;
+        GridLayout {
+            spacing: 10px;
+            Row {
+                SettingsText {text: "Autostart";}
+                Switch {}
+            }
+            Row {
+                SettingsText {text: "Media application";}
+                LineEdit {}
                 Button {
                     background-color: gray.darker(0.7);
                     hover-background-color: gray.darker(0.9);
@@ -38,14 +33,10 @@ export component SlintSettingsWindow inherits Window {
                     height: 30px;
                     border-radius: 4px;
                     Text {
-                        text: "Connect";
+                        text: "Confirm";
                         font-size: 1.5rem;
                     }
                 }
-            }
-            SettingsRow {
-                name: "Autostart";
-                Switch {}
             }
         }
     }
