@@ -52,7 +52,7 @@ export component SlintMainWindow inherits Window {
                 }
                 HorizontalLayout {
                     padding-left: 25px;
-                    padding-right: 10px;
+                    padding-right: 0px;
                     padding-top: 10px;
                     spacing: 30px;
                     Image {
@@ -67,13 +67,16 @@ export component SlintMainWindow inherits Window {
                         Text {
                             text: track-title;
                             font-size: 30px;
+                            overflow: TextOverflow.elide;
+                            width: root.width / 2;
                         }
                         Text {
                             text: track-subtitle;
+                            overflow: TextOverflow.elide;
+                            width: root.width / 2;
                         }
                         Rectangle {
                             height: 20px;
-                            
                         }
                         HorizontalLayout {
                             spacing: 25px;
