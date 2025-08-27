@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, sync::{Weak, Arc}};
+use std::{path::{Path, PathBuf}, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use anyhow::{bail, Result};
@@ -7,7 +7,6 @@ use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
 use crate::service::BaseService;
 
 pub struct AppSettings<S> {
-    self_ref: Weak<RwLock<AppSettings<S>>>,
     save_path: PathBuf,
     event_sender: Sender<()>,
     settings: S
@@ -33,15 +32,12 @@ where
     pub fn new(save_path: impl Into<PathBuf>) -> Result<Arc<RwLock<Self>>> {
         let save_path = save_path.into();
         std::fs::create_dir_all(&save_path.parent().unwrap())?;
-        let settings = Arc::new_cyclic(|w| {
-            let (tx, _) = channel(16);
-            RwLock::new(AppSettings{
-                save_path,
-                self_ref: w.clone(),
-                event_sender: tx,
-                settings: S::default()
-            })
-        });
+        let (tx, _) = channel(16);
+        let settings = Arc::new(RwLock::new(AppSettings{
+            save_path,
+            event_sender: tx,
+            settings: S::default()
+        }));
         Ok(settings)
     }
 
