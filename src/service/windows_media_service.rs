@@ -40,9 +40,17 @@ fn unwrap_hstring(hstring: WinResult<HSTRING>, default: impl Into<String>) -> St
             }
         })
         .unwrap_or_else(|| {
-            log::error!("Could not retrieve HSTRING");
+            log::warn!("Could not retrieve HSTRING");
             default.into()
         })
+}
+
+fn convert_ticks_to_seconds(ticks: i64) -> u64 {
+    if ticks < 0 {
+        return 0;
+    }
+
+    ticks as u64 / 10_000_000
 }
 
 macro_rules! register_winrt_event {
@@ -177,19 +185,47 @@ impl WindowsMediaService {
         let media_props = session.TryGetMediaPropertiesAsync()?.get()?;
         let timeline_props = session.GetTimelineProperties()?;
 
-        let album_cover = match media_props.Thumbnail() {
-            Ok(s) => WindowsMediaService::read_thumbnail(s),
-            Err(_) => AlbumCover::None
-        };
+        // WinRt triggers the MediaPropertiesChanged event twice in succession - Once for title and such and once for the thumbnail.
+        // We only want to publish the change once and so we check if we have already published the current track based on the title and its length.
+        // It is highly unlikely that two different tracks with the same title and length are being played in succession.
+        // That way, we know that an event got triggered twice.
+        let title_length =  convert_ticks_to_seconds(timeline_props.MaxSeekTime()?.Duration);
+        let title = unwrap_hstring(media_props.Title(), "No Title");
+        if let Some(track) = &self.current_track {
+            // We might need to update the thumbnail if we don't have one
+            // In that case we still handle the event
+            if !track.album_cover.is_none() && track.length == title_length && track.title == title {
+                return Ok(());
+            }
+        }
 
-        let track = MediaTrack {
-            album_title: unwrap_hstring(media_props.AlbumTitle(), "No Title"),
-            artist: unwrap_hstring(media_props.AlbumArtist(), "No Artist"),
-            title: unwrap_hstring(media_props.Title(), "No Title"),
-            length: timeline_props.MaxSeekTime().unwrap().Duration as u64,
-            album_cover
+        let track = if title_length > 0 {
+            let album_cover = match media_props.Thumbnail() {
+                Ok(s) => {
+                    match WindowsMediaService::read_thumbnail(s) {
+                        Ok(cover) => cover,
+                        Err(e) => {
+                            log::error!("Unable to fetch thumbnail: {}", e);
+                            AlbumCover::None
+                        }
+                    }
+                },
+                Err(_) => AlbumCover::None
+            };
+
+            Some(MediaTrack {
+                album_title: unwrap_hstring(media_props.AlbumTitle(), "No Title"),
+                artist: unwrap_hstring(media_props.Artist(), "No Artist"),
+                title,
+                length: title_length,
+                album_cover
+            })
+        } else {
+            // We have no track
+            None
         };
-        self.current_track = Some(track);
+        
+        self.current_track = track;
         self.send_event(PlaybackChangedEvent::TrackChanged);
         Ok(())
     }
@@ -203,7 +239,7 @@ impl WindowsMediaService {
         // See: https://learn.microsoft.com/en-US/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionplaybackstatus?view=winrt-22621
         let playing = playback.PlaybackStatus()?.0 == 4;
         self.playback_state.is_playing = playing;
-        self.send_event(PlaybackChangedEvent::Pause);
+        self.send_event( if playing {PlaybackChangedEvent::Play} else {PlaybackChangedEvent::Pause});
         Ok(())
     }
 
@@ -248,6 +284,8 @@ impl WindowsMediaService {
                 let _ = session.RemovePlaybackInfoChanged(handle.get());
             }
         }
+        self.current_track = None;
+        self.send_event(PlaybackChangedEvent::TrackChanged);
     }
 
     pub fn clone(&self) -> Weak<RwLock<Self>> {

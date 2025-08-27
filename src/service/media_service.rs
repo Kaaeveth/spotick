@@ -1,4 +1,5 @@
-use std::sync::Arc;
+#![allow(dead_code)]
+use std::{fmt::Debug, sync::Arc};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -6,7 +7,7 @@ use tokio::sync::RwLock;
 
 use crate::service::BaseService;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PlaybackChangedEvent {
     TrackChanged,
     Play,
@@ -15,11 +16,30 @@ pub enum PlaybackChangedEvent {
     PlaybackProgress
 }
 
-#[derive(Debug)]
 pub enum AlbumCover {
     Url(String),
     Image(image::RgbaImage),
     None
+}
+
+impl AlbumCover {
+    pub fn is_none(&self) -> bool {
+        match self {
+            AlbumCover::None => true,
+            _ => false
+        }
+    }
+}
+
+impl Debug for AlbumCover {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let img_type = match self {
+            AlbumCover::Image(_) => "RgbaImage",
+            AlbumCover::None => "None",
+            AlbumCover::Url(_) => "Url"
+        };
+        write!(f, "Image ({})", img_type)
+    }
 }
 
 #[derive(Debug)]
@@ -28,7 +48,7 @@ pub struct MediaTrack {
     pub artist: String,
     pub album_title: String,
     pub album_cover: AlbumCover,
-    pub length: u64
+    pub length: u64 // seconds
 }
 
 #[derive(Default, Debug)]
@@ -40,8 +60,6 @@ pub struct PlaybackState {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MediaServiceError {
-    #[error("Not authenticated! Goto Settings > Connect")]
-    NotAuthenticated,
     #[error("WinRT error")]
     WinRt(#[from] windows::core::Error),
     #[error(transparent)]
