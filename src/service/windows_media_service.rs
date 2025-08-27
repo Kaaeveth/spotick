@@ -100,6 +100,15 @@ impl WindowsMediaService {
     }
 
     fn send_event(&self, ev: PlaybackChangedEvent) {
+        match ev {
+            PlaybackChangedEvent::TrackChanged => {
+                log::info!("{:?}: {:?}", ev, self.current_track);
+            },
+            PlaybackChangedEvent::Pause | PlaybackChangedEvent::Play => {
+                log::info!("{:?}: {:?}", ev, self.playback_state);
+            },
+            _ => {}
+        };
         let _ = self.event_sender.send(ev);
     }
 
