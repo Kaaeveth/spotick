@@ -22,7 +22,7 @@ impl MainWindow {
             media_service
         };
 
-        app.set_initial_thumbnail();
+        app.ui.set_initial_thumbnail();
         app.connect_settings();
         app.connect_media_info();
         app.enable_app_quit();
@@ -93,7 +93,13 @@ impl MainWindow {
             if let Some(current_media_track) = srv_lock.current_track() {
                 ui.set_track_title(current_media_track.title.to_shared_string());
                 ui.set_track_subtitle(current_media_track.artist.to_shared_string());
-                // TODO: Thumbnail
+                if let AlbumCover::Image(img) = &current_media_track.album_cover {
+                    ui.set_thumbnail(img.clone());
+                }
+            } else {
+                ui.set_track_title("No Title".into());
+                ui.set_track_subtitle("...".into());
+                ui.set_initial_thumbnail();
             }
         });
     }
@@ -169,6 +175,21 @@ impl MainWindow {
         callback!(on_quit, |_app| {
             let _ = slint::quit_event_loop();
         });
+    } 
+}
+
+impl SlintMainWindow {
+    fn set_thumbnail(&self, mut img: RgbaImage) {
+        // Apply image decorations
+        apply_border_radius(&mut img, self.get_thumbnail_border_radius() as u32);
+
+        let buffer = SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
+            img.as_raw(),
+            img.width(),
+            img.height(),
+        );
+        let image = Image::from_rgba8(buffer);
+        self.set_thumbnail_img(image);
     }
 
     /// Sets the initial (empty) album cover image
@@ -177,8 +198,7 @@ impl MainWindow {
     /// This is necessary for image decorations (border-radius,...)
     /// to be applied to the initial cover image.
     fn set_initial_thumbnail(&self) {
-        let app = &self.ui;
-        let img = app.get_thumbnail_placeholder();
+        let img = self.get_thumbnail_placeholder();
         let img_size = img.size();
         let img = img.to_rgba8().expect("Expected RGBA");
         let buffer = RgbaImage::from_raw(
@@ -188,19 +208,6 @@ impl MainWindow {
         ).expect("Invalid placeholder image format");
 
         self.set_thumbnail(buffer);
-    }
-
-    fn set_thumbnail(&self, mut img: RgbaImage) {
-        // Apply image decorations
-        apply_border_radius(&mut img, self.ui.get_thumbnail_border_radius() as u32);
-
-        let buffer = SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
-            img.as_raw(),
-            img.width(),
-            img.height(),
-        );
-        let image = Image::from_rgba8(buffer);
-        self.ui.set_thumbnail_img(image);
     }
 }
 

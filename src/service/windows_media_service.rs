@@ -1,12 +1,13 @@
-use std::{num::NonZero, sync::{Arc, Weak}};
+use std::{io::Cursor, num::NonZero, sync::{Arc, Weak}};
 
-use image::{RgbImage, RgbaImage};
+use anyhow::{ensure, Result};
+use image::ImageReader;
 use windows::{core::{Result as WinResult, HSTRING}, Foundation::TypedEventHandler, Media::Control::{
     GlobalSystemMediaTransportControlsSession, GlobalSystemMediaTransportControlsSessionManager
-}, Storage::Streams::IRandomAccessStreamReference};
+}, Storage::Streams::{DataReader, IRandomAccessStreamReference, InputStreamOptions}};
 use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
 
-use crate::service::{media_service::{AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent, PlaybackState}, BaseService};
+use crate::{service::{media_service::{AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent, PlaybackState}, BaseService}};
 
 type WinRtHandle = Option<NonZero<i64>>;
 
@@ -197,8 +198,25 @@ impl WindowsMediaService {
         Ok(())
     }
 
-    fn read_thumbnail(stream: IRandomAccessStreamReference) -> AlbumCover {
-        AlbumCover::None
+    fn read_thumbnail(stream: IRandomAccessStreamReference) -> Result<AlbumCover> {
+        let stream_handle = stream.OpenReadAsync()?.get()?;
+        ensure!(stream_handle.CanRead()?, "Thumbnail is not readable");
+
+        let buffer_size = stream_handle.Size()? as u32;
+        log::info!("Media thumbnail content-type: {}, Size: {}", stream_handle.ContentType()?, buffer_size);
+
+        let buf_reader = DataReader::CreateDataReader(&stream_handle)?;
+        buf_reader.SetInputStreamOptions(InputStreamOptions(2))?;
+        buf_reader.LoadAsync(buffer_size)?.get()?;
+
+        let mut buffer: Vec<u8> = Vec::with_capacity(buffer_size as usize);
+        buffer.resize(buffer.capacity(), 0); // DataReader needs length == capacity
+        buf_reader.ReadBytes(&mut buffer)?;
+
+        let img_reader = ImageReader::new(Cursor::new(buffer)).with_guessed_format()?;
+        let img = img_reader.decode()?.to_rgba8();
+
+        Ok(AlbumCover::Image(img))
     }
 
     /// Stops monitoring for the source media session.
