@@ -1,21 +1,28 @@
+use crate::{
+    callback,
+    service::BaseService,
+    settings::SpotickAppSettings,
+    ui::{
+        get_window_creation_settings,
+        window::{SlintSettingsWindow, Window},
+    },
+};
 use anyhow::Result;
-use slint::{ComponentHandle, ToSharedString};
 use i_slint_backend_winit::winit::window::WindowButtons;
-use crate::{callback, service::BaseService, settings::SpotickAppSettings, ui::{get_window_creation_settings, window::{SlintSettingsWindow, Window}}};
+use slint::{ComponentHandle, ToSharedString};
 
 pub struct SettingsWindow {
     ui: SlintSettingsWindow,
-    app_settings: SpotickAppSettings
+    app_settings: SpotickAppSettings,
 }
 
 impl SettingsWindow {
     pub fn new(app_settings: SpotickAppSettings) -> Result<Self> {
-        let _settings_guard = get_window_creation_settings().change(|attr| {
-            attr.with_enabled_buttons(WindowButtons::CLOSE)
-        });
-        let win = SettingsWindow { 
+        let _settings_guard = get_window_creation_settings()
+            .change(|attr| attr.with_enabled_buttons(WindowButtons::CLOSE));
+        let win = SettingsWindow {
             ui: SlintSettingsWindow::new()?,
-            app_settings
+            app_settings,
         };
 
         win.connect_settings();
@@ -37,8 +44,7 @@ impl SettingsWindow {
                     ui.set_auto_start(settings.auto_start);
                     ui.set_always_top(settings.always_on_top);
                     ui.set_media_application_id(settings.source_app.to_shared_string());
-                }) 
-                {
+                }) {
                     break;
                 }
 
@@ -55,9 +61,9 @@ impl SettingsWindow {
 
     fn setup_callbacks(&self) {
         let ui = &self.ui;
-        
+
         let settings = self.app_settings.clone();
-        callback!(on_settings_changed, |ui|{
+        callback!(on_settings_changed, |ui| {
             let settings = settings.clone();
 
             let auto_start = ui.get_auto_start();

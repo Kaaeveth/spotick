@@ -13,15 +13,15 @@ pub type SpotickAppSettings = Arc<RwLock<AppSettings<SpotickSettings>>>;
 pub struct SpotickSettings {
     pub auto_start: bool,
     pub always_on_top: bool,
-    pub source_app: String
+    pub source_app: String,
 }
 
 impl Default for SpotickSettings {
     fn default() -> Self {
-        SpotickSettings { 
+        SpotickSettings {
             auto_start: false,
             always_on_top: false,
-            source_app: String::from("spotify.exe")
+            source_app: String::from("spotify.exe"),
         }
     }
 }

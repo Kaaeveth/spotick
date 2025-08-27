@@ -1,13 +1,31 @@
-use std::{io::Cursor, num::NonZero, sync::{Arc, Weak}};
+use std::{
+    io::Cursor,
+    num::NonZero,
+    sync::{Arc, Weak},
+};
 
 use anyhow::{ensure, Result};
 use image::ImageReader;
-use windows::{core::{Result as WinResult, HSTRING}, Foundation::TypedEventHandler, Media::Control::{
-    GlobalSystemMediaTransportControlsSession, GlobalSystemMediaTransportControlsSessionManager
-}, Storage::Streams::{DataReader, IRandomAccessStreamReference, InputStreamOptions}};
-use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
+use tokio::sync::{
+    broadcast::{channel, Receiver, Sender},
+    RwLock,
+};
+use windows::{
+    core::{Result as WinResult, HSTRING},
+    Foundation::TypedEventHandler,
+    Media::Control::{
+        GlobalSystemMediaTransportControlsSession, GlobalSystemMediaTransportControlsSessionManager,
+    },
+    Storage::Streams::{DataReader, IRandomAccessStreamReference, InputStreamOptions},
+};
 
-use crate::{service::{media_service::{AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent, PlaybackState}, BaseService}};
+use crate::service::{
+    media_service::{
+        AlbumCover, MediaService, MediaServiceError, MediaTrack, PlaybackChangedEvent,
+        PlaybackState,
+    },
+    BaseService,
+};
 
 type WinRtHandle = Option<NonZero<i64>>;
 
@@ -26,7 +44,7 @@ pub struct WindowsMediaService {
     source_session: Option<GlobalSystemMediaTransportControlsSession>,
     current_track: Option<MediaTrack>,
     playback_state: PlaybackState,
-    event_sender: Sender<PlaybackChangedEvent>
+    event_sender: Sender<PlaybackChangedEvent>,
 }
 
 fn unwrap_hstring(hstring: WinResult<HSTRING>, default: impl Into<String>) -> String {
@@ -58,8 +76,8 @@ macro_rules! register_winrt_event {
         $src.$ev(&TypedEventHandler::new({
             let srv = $self.clone();
             let rt_handle = tokio::runtime::Handle::current();
-            move |_,__| {
-                let srv = srv.clone(); 
+            move |_, __| {
+                let srv = srv.clone();
                 rt_handle.spawn(async move {
                     log::info!(stringify!($ev));
                     if let Some($srv) = srv.upgrade() {
@@ -80,13 +98,13 @@ macro_rules! register_winrt_event {
 impl WindowsMediaService {
     /// Creates a new media service monitoring the application identified by
     /// the [source_app_id] (usually the application image name - i.e. file name).
-    /// 
+    ///
     /// To monitor Spotify for example:
     /// ```
     /// let srv = WindowsMediaService::new("Spotify.exe");
     /// srv.write().await.begin_monitor_sessions()?;
     /// ```
-    /// 
+    ///
     /// You have to call [WindowsMediaService::begin_monitor_sessions] to receive
     /// [PlaybackChangedEvent]s.
     pub fn new(source_app_id: impl Into<String>) -> Arc<RwLock<Self>> {
@@ -94,7 +112,10 @@ impl WindowsMediaService {
             let (tx, _) = channel(16);
             RwLock::new(WindowsMediaService {
                 self_ref: weak.clone(),
-                manager: GlobalSystemMediaTransportControlsSessionManager::RequestAsync().unwrap().get().unwrap(),
+                manager: GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
+                    .unwrap()
+                    .get()
+                    .unwrap(),
                 sessions_changed_handler: None,
                 media_properties_changed_handler: None,
                 media_playback_changed_handler: None,
@@ -102,7 +123,7 @@ impl WindowsMediaService {
                 current_track: None,
                 playback_state: PlaybackState::default(),
                 source_app_id: source_app_id.into().to_lowercase(),
-                event_sender: tx
+                event_sender: tx,
             })
         })
     }
@@ -111,10 +132,10 @@ impl WindowsMediaService {
         match ev {
             PlaybackChangedEvent::TrackChanged => {
                 log::info!("{:?}: {:?}", ev, self.current_track);
-            },
+            }
             PlaybackChangedEvent::Pause | PlaybackChangedEvent::Play => {
                 log::info!("{:?}: {:?}", ev, self.playback_state);
-            },
+            }
             _ => {}
         };
         let _ = self.event_sender.send(ev);
@@ -136,14 +157,19 @@ impl WindowsMediaService {
     }
 
     fn begin_monitor_source_session(&mut self) -> Result<(), MediaServiceError> {
-        if self.media_properties_changed_handler.is_some() || self.media_playback_changed_handler.is_some() {
+        if self.media_properties_changed_handler.is_some()
+            || self.media_playback_changed_handler.is_some()
+        {
             return Ok(());
         }
         let Some(session) = &self.source_session else {
             return Ok(());
         };
 
-        log::info!("Beginning to monitor source session: {}", &self.source_app_id);
+        log::info!(
+            "Beginning to monitor source session: {}",
+            &self.source_app_id
+        );
 
         let handle = register_winrt_event!(self, session, MediaPropertiesChanged, |srv| {
             srv.write().await.update_current_session_info()
@@ -189,28 +215,27 @@ impl WindowsMediaService {
         // We only want to publish the change once and so we check if we have already published the current track based on the title and its length.
         // It is highly unlikely that two different tracks with the same title and length are being played in succession.
         // That way, we know that an event got triggered twice.
-        let title_length =  convert_ticks_to_seconds(timeline_props.MaxSeekTime()?.Duration);
+        let title_length = convert_ticks_to_seconds(timeline_props.MaxSeekTime()?.Duration);
         let title = unwrap_hstring(media_props.Title(), "No Title");
         if let Some(track) = &self.current_track {
             // We might need to update the thumbnail if we don't have one
             // In that case we still handle the event
-            if !track.album_cover.is_none() && track.length == title_length && track.title == title {
+            if !track.album_cover.is_none() && track.length == title_length && track.title == title
+            {
                 return Ok(());
             }
         }
 
         let track = if title_length > 0 {
             let album_cover = match media_props.Thumbnail() {
-                Ok(s) => {
-                    match WindowsMediaService::read_thumbnail(s) {
-                        Ok(cover) => cover,
-                        Err(e) => {
-                            log::error!("Unable to fetch thumbnail: {}", e);
-                            AlbumCover::None
-                        }
+                Ok(s) => match WindowsMediaService::read_thumbnail(s) {
+                    Ok(cover) => cover,
+                    Err(e) => {
+                        log::error!("Unable to fetch thumbnail: {}", e);
+                        AlbumCover::None
                     }
                 },
-                Err(_) => AlbumCover::None
+                Err(_) => AlbumCover::None,
             };
 
             Some(MediaTrack {
@@ -218,13 +243,13 @@ impl WindowsMediaService {
                 artist: unwrap_hstring(media_props.Artist(), "No Artist"),
                 title,
                 length: title_length,
-                album_cover
+                album_cover,
             })
         } else {
             // We have no track
             None
         };
-        
+
         self.current_track = track;
         self.send_event(PlaybackChangedEvent::TrackChanged);
         Ok(())
@@ -239,7 +264,11 @@ impl WindowsMediaService {
         // See: https://learn.microsoft.com/en-US/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionplaybackstatus?view=winrt-22621
         let playing = playback.PlaybackStatus()?.0 == 4;
         self.playback_state.is_playing = playing;
-        self.send_event( if playing {PlaybackChangedEvent::Play} else {PlaybackChangedEvent::Pause});
+        self.send_event(if playing {
+            PlaybackChangedEvent::Play
+        } else {
+            PlaybackChangedEvent::Pause
+        });
         Ok(())
     }
 
@@ -248,7 +277,11 @@ impl WindowsMediaService {
         ensure!(stream_handle.CanRead()?, "Thumbnail is not readable");
 
         let buffer_size = stream_handle.Size()? as u32;
-        log::info!("Media thumbnail content-type: {}, Size: {}", stream_handle.ContentType()?, buffer_size);
+        log::info!(
+            "Media thumbnail content-type: {}, Size: {}",
+            stream_handle.ContentType()?,
+            buffer_size
+        );
 
         let buf_reader = DataReader::CreateDataReader(&stream_handle)?;
         buf_reader.SetInputStreamOptions(InputStreamOptions(2))?;
@@ -309,7 +342,9 @@ impl BaseService<PlaybackChangedEvent> for WindowsMediaService {
 macro_rules! wait_async_op {
     ($async_op:expr) => {
         let x = $async_op;
-        tokio::task::spawn_blocking(move || x.get()).await.unwrap()?
+        tokio::task::spawn_blocking(move || x.get())
+            .await
+            .unwrap()?
     };
 }
 

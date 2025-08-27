@@ -1,34 +1,35 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
-use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak};
-use anyhow::Result;
+use slint::{
+    ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak,
+};
 
 use crate::{
     callback,
-    service::{BaseService, PlaybackChangedEvent, SharedMediaService, AlbumCover}, 
+    service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService},
     ui::{
         apply_border_radius, get_window_creation_settings,
-        window::{SettingsWindow, SlintMainWindow, Window}
-    }
+        window::{SettingsWindow, SlintMainWindow, Window},
+    },
 };
 
 pub struct MainWindow {
     ui: SlintMainWindow,
     settings_window: SettingsWindow,
-    media_service: SharedMediaService
+    media_service: SharedMediaService,
 }
 
 impl MainWindow {
     pub fn new(media_service: SharedMediaService, settings: SettingsWindow) -> Result<Self> {
-        let _guard_settings = get_window_creation_settings().change(|attr| {
-            attr.with_skip_taskbar(true)
-        });
+        let _guard_settings =
+            get_window_creation_settings().change(|attr| attr.with_skip_taskbar(true));
         let app = MainWindow {
             ui: SlintMainWindow::new()?,
             settings_window: settings,
-            media_service
+            media_service,
         };
 
         app.ui.set_initial_thumbnail();
@@ -37,7 +38,7 @@ impl MainWindow {
         app.enable_app_quit();
         app.enable_window_positioning();
         app.setup_ui_callbacks();
-        
+
         Ok(app)
     }
 
@@ -124,10 +125,10 @@ impl MainWindow {
                 match e {
                     PlaybackChangedEvent::TrackChanged => {
                         MainWindow::update_track(&srv, &wui).await;
-                    },
+                    }
                     PlaybackChangedEvent::Play | PlaybackChangedEvent::Pause => {
                         MainWindow::update_playback(&srv, &wui).await;
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -170,7 +171,7 @@ impl MainWindow {
         callback!(on_quit, |_app| {
             let _ = slint::quit_event_loop();
         });
-    } 
+    }
 }
 
 impl SlintMainWindow {
@@ -196,11 +197,8 @@ impl SlintMainWindow {
         let img = self.get_thumbnail_placeholder();
         let img_size = img.size();
         let img = img.to_rgba8().expect("Expected RGBA");
-        let buffer = RgbaImage::from_raw(
-            img_size.width,
-            img_size.height,
-            img.as_bytes().to_vec()
-        ).expect("Invalid placeholder image format");
+        let buffer = RgbaImage::from_raw(img_size.width, img_size.height, img.as_bytes().to_vec())
+            .expect("Invalid placeholder image format");
 
         self.set_thumbnail(buffer);
     }

@@ -13,20 +13,20 @@ pub enum PlaybackChangedEvent {
     Play,
     Pause,
     Volume,
-    PlaybackProgress
+    PlaybackProgress,
 }
 
 pub enum AlbumCover {
     Url(String),
     Image(image::RgbaImage),
-    None
+    None,
 }
 
 impl AlbumCover {
     pub fn is_none(&self) -> bool {
         match self {
             AlbumCover::None => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -36,7 +36,7 @@ impl Debug for AlbumCover {
         let img_type = match self {
             AlbumCover::Image(_) => "RgbaImage",
             AlbumCover::None => "None",
-            AlbumCover::Url(_) => "Url"
+            AlbumCover::Url(_) => "Url",
         };
         write!(f, "Image ({})", img_type)
     }
@@ -48,14 +48,14 @@ pub struct MediaTrack {
     pub artist: String,
     pub album_title: String,
     pub album_cover: AlbumCover,
-    pub length: u64 // seconds
+    pub length: u64, // seconds
 }
 
 #[derive(Default, Debug)]
 pub struct PlaybackState {
     pub is_playing: bool,
-    pub volume: u32, // %
-    pub progress: Option<u32> // %
+    pub volume: u32,           // %
+    pub progress: Option<u32>, // %
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -63,7 +63,7 @@ pub enum MediaServiceError {
     #[error("WinRT error")]
     WinRt(#[from] windows::core::Error),
     #[error(transparent)]
-    Other(#[from] anyhow::Error)
+    Other(#[from] anyhow::Error),
 }
 
 pub type SharedMediaService = Arc<RwLock<dyn MediaService>>;

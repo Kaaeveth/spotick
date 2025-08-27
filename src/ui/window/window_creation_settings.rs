@@ -1,4 +1,8 @@
-use std::{mem::MaybeUninit, sync::Once, thread::{self}};
+use std::{
+    mem::MaybeUninit,
+    sync::Once,
+    thread::{self},
+};
 
 use i_slint_backend_winit::winit::window::WindowAttributes;
 
@@ -25,7 +29,7 @@ pub fn get_window_creation_settings() -> &'static mut WindowCreationSettings {
 
 pub struct WindowCreationSettings {
     default_settings: WindowAttributes,
-    current_settings: WindowAttributes
+    current_settings: WindowAttributes,
 }
 
 impl WindowCreationSettings {
@@ -35,14 +39,17 @@ impl WindowCreationSettings {
             .with_transparent(true);
         Self {
             default_settings: attr.clone(),
-            current_settings: attr
+            current_settings: attr,
         }
     }
 
-    pub fn change(&mut self, change: impl Fn(WindowAttributes) -> WindowAttributes + 'static) -> SettingsChangedGuard {
+    pub fn change(
+        &mut self,
+        change: impl Fn(WindowAttributes) -> WindowAttributes + 'static,
+    ) -> SettingsChangedGuard {
         let new_attr = change(self.default_settings.clone());
-        let guard = SettingsChangedGuard { 
-            old_settings: Some(self.current_settings.clone())
+        let guard = SettingsChangedGuard {
+            old_settings: Some(self.current_settings.clone()),
         };
         self.current_settings = new_attr;
         guard
@@ -57,7 +64,7 @@ impl WindowCreationSettings {
 /// If this gets dropped, the current window creation settings
 /// will be reverted to the previous ones.
 pub struct SettingsChangedGuard {
-    old_settings: Option<WindowAttributes>
+    old_settings: Option<WindowAttributes>,
 }
 
 impl Drop for SettingsChangedGuard {

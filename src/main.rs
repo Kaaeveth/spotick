@@ -3,12 +3,18 @@
 
 use anyhow::Result;
 
-use crate::{service::WindowsMediaService, settings::{AppSettings, SpotickSettings}, ui::{init_backend, window::{MainWindow, SettingsWindow}}};
+use crate::{
+    service::WindowsMediaService,
+    settings::{AppSettings, SpotickSettings},
+    ui::{
+        init_backend,
+        window::{MainWindow, SettingsWindow},
+    },
+};
 
-mod ui;
-mod settings;
 mod service;
-
+mod settings;
+mod ui;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
@@ -18,7 +24,8 @@ async fn main() -> Result<()> {
     let settings = AppSettings::<SpotickSettings>::default()?;
     settings.write().await.load().await?;
 
-    let win_media_service = WindowsMediaService::new(settings.read().await.get_settings().source_app.clone());
+    let win_media_service =
+        WindowsMediaService::new(settings.read().await.get_settings().source_app.clone());
     win_media_service.write().await.begin_monitor_sessions()?;
 
     let settings_window = SettingsWindow::new(settings.clone())?;

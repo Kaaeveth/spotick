@@ -1,7 +1,7 @@
 use tokio::sync::broadcast::Receiver;
 
+pub use crate::service::media_service::{AlbumCover, PlaybackChangedEvent, SharedMediaService};
 pub use crate::service::windows_media_service::WindowsMediaService;
-pub use crate::service::media_service::{PlaybackChangedEvent, SharedMediaService, AlbumCover};
 
 mod media_service;
 mod windows_media_service;

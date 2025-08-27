@@ -1,15 +1,21 @@
-use std::{path::{Path, PathBuf}, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
-use serde::{Deserialize, Serialize};
 use anyhow::{bail, Result};
-use tokio::sync::{broadcast::{channel, Receiver, Sender}, RwLock};
+use serde::{Deserialize, Serialize};
+use tokio::sync::{
+    broadcast::{channel, Receiver, Sender},
+    RwLock,
+};
 
 use crate::service::BaseService;
 
 pub struct AppSettings<S> {
     save_path: PathBuf,
     event_sender: Sender<()>,
-    settings: S
+    settings: S,
 }
 
 #[cfg(windows)]
@@ -21,8 +27,8 @@ fn get_default_save_path() -> PathBuf {
 }
 
 impl<S> AppSettings<S>
-where 
-    S: Serialize + for<'de> Deserialize<'de> + Default + Send + Sync
+where
+    S: Serialize + for<'de> Deserialize<'de> + Default + Send + Sync,
 {
     pub fn default() -> Result<Arc<RwLock<Self>>> {
         let save_path = get_default_save_path();
@@ -33,10 +39,10 @@ where
         let save_path = save_path.into();
         std::fs::create_dir_all(&save_path.parent().unwrap())?;
         let (tx, _) = channel(16);
-        let settings = Arc::new(RwLock::new(AppSettings{
+        let settings = Arc::new(RwLock::new(AppSettings {
             save_path,
             event_sender: tx,
-            settings: S::default()
+            settings: S::default(),
         }));
         Ok(settings)
     }
@@ -67,12 +73,10 @@ where
         let file_contents = tokio::fs::read(&self.save_path).await;
         let file_contents = match file_contents {
             Ok(res) => res,
-            Err(e) => {
-                match e.kind() {
-                    std::io::ErrorKind::NotFound => return Ok(()),
-                    _ => bail!(e)
-                }
-            }
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => return Ok(()),
+                _ => bail!(e),
+            },
         };
         self.settings = serde_json::from_slice::<S>(&file_contents)?;
         self.notify_settings_changed();
@@ -80,9 +84,9 @@ where
     }
 }
 
-impl<S> BaseService<()> for AppSettings<S> 
-where 
-    S: Send + Sync
+impl<S> BaseService<()> for AppSettings<S>
+where
+    S: Send + Sync,
 {
     fn subscribe(&self) -> Receiver<()> {
         self.event_sender.subscribe()
@@ -99,24 +103,23 @@ mod test {
     struct TestSettings {
         int: u32,
         hello: String,
-        nice: bool
+        nice: bool,
     }
 
     use super::*;
 
     struct Context {
-        path: PathBuf
+        path: PathBuf,
     }
 
     impl AsyncTestContext for Context {
         async fn setup() -> Self {
             let mut rng: StdRng = StdRng::from_os_rng();
-        
-            let dire = std::env::temp_dir().join(format!("spotick-test/{}-settings.json", rng.next_u64()));
+
+            let dire =
+                std::env::temp_dir().join(format!("spotick-test/{}-settings.json", rng.next_u64()));
             println!("Dire: {:?}", &dire);
-            Self {
-                path: dire
-            }
+            Self { path: dire }
         }
 
         async fn teardown(self) {
@@ -131,7 +134,10 @@ mod test {
         app_settings.write().await.save().await?;
         let json = std::fs::read(&ctx.path)?;
         let settings = serde_json::from_slice::<TestSettings>(&json)?;
-        ensure!(&settings == app_settings.read().await.get_settings(), "Default settings differ");
+        ensure!(
+            &settings == app_settings.read().await.get_settings(),
+            "Default settings differ"
+        );
         Ok(())
     }
 
@@ -139,7 +145,10 @@ mod test {
     fn correct_default_save_path() {
         std::env::set_var("APPDATA", "C:\\Users\\test\\AppData\\Roaming");
         let default_path = get_default_save_path();
-        assert_eq!(default_path, PathBuf::from("C:\\Users\\test\\AppData\\Roaming\\spotick\\settings.json"));
+        assert_eq!(
+            default_path,
+            PathBuf::from("C:\\Users\\test\\AppData\\Roaming\\spotick\\settings.json")
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
@@ -148,7 +157,7 @@ mod test {
         app_settings.write().await.load().await?;
         Ok(())
     }
- 
+
     #[test_context(Context)]
     #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
     async fn simple_setting(ctx: &mut Context) -> Result<()> {
@@ -162,7 +171,10 @@ mod test {
         let settings = AppSettings::<TestSettings>::new(&ctx.path)?;
         settings.write().await.load().await?;
         ensure!(settings.read().await.get_settings().nice, "Expected true");
-        ensure!(&settings.read().await.get_settings().hello == "world", "Expected true");
+        ensure!(
+            &settings.read().await.get_settings().hello == "world",
+            "Expected true"
+        );
         Ok(())
     }
 }
