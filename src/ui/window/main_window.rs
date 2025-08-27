@@ -1,9 +1,18 @@
+use std::sync::Arc;
+
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
 use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak};
 use anyhow::Result;
 
-use crate::{callback, service::{BaseService, PlaybackChangedEvent, SharedMediaService}, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
+use crate::{
+    callback,
+    service::{BaseService, PlaybackChangedEvent, SharedMediaService, AlbumCover}, 
+    ui::{
+        apply_border_radius, get_window_creation_settings,
+        window::{SettingsWindow, SlintMainWindow, Window}
+    }
+};
 
 pub struct MainWindow {
     ui: SlintMainWindow,
@@ -50,41 +59,27 @@ impl MainWindow {
             let _ = settings_window.show();
         });
 
-        let srv = self.media_service.clone();
-        callback!(on_toggle_play, |_app| {
-            tokio::spawn({
-                let srv = srv.clone();
-                async move {
-                    if let Err(e) = srv.write().await.toggle_playback().await {
-                        log::error!("Error toggling playback: {}", e);
-                    }
-                }
-            });
-        });
+        macro_rules! connect_to_media_service {
+            ($srv:expr, $media_method:ident, $ui_callback:ident) => {
+                let srv = Arc::downgrade($srv);
+                callback!($ui_callback, |_app| {
+                    tokio::spawn({
+                        let srv = srv.clone();
+                        async move {
+                            if let Some(srv) = srv.upgrade() {
+                                if let Err(e) = srv.write().await.$media_method().await {
+                                    log::error!("Error in {}: {}", stringify!($media_method), e);
+                                }
+                            }
+                        }
+                    });
+                });
+            };
+        }
 
-        let srv = self.media_service.clone();
-        callback!(on_next_track, |_app| {
-            tokio::spawn({
-                let srv = srv.clone();
-                async move {
-                    if let Err(e) = srv.write().await.next_track().await {
-                        log::error!("Error skipping track: {}", e);
-                    }
-                }
-            });
-        });
-
-        let srv = self.media_service.clone();
-        callback!(on_previous_track, |_app| {
-            tokio::spawn({
-                let srv = srv.clone();
-                async move {
-                    if let Err(e) = srv.write().await.previous_track().await {
-                        log::error!("Error skipping back track: {}", e);
-                    }
-                }
-            });
-        });
+        connect_to_media_service!(&self.media_service, toggle_playback, on_toggle_play);
+        connect_to_media_service!(&self.media_service, next_track, on_next_track);
+        connect_to_media_service!(&self.media_service, previous_track, on_previous_track);
     }
 
     async fn update_track(srv: &SharedMediaService, wui: &Weak<SlintMainWindow>) {
