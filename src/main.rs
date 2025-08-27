@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let settings = AppSettings::<SpotickSettings>::default()?;
     settings.write().await.load().await?;
 
-    let win_media_service = WindowsMediaService::new("spotify.exe");
+    let win_media_service = WindowsMediaService::new(settings.read().await.get_settings().source_app.clone());
     win_media_service.write().await.begin_monitor_sessions()?;
 
     // Print media events when in debug mode
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     }
 
     let settings_window = SettingsWindow::new(settings.clone())?;
-    let main_window = MainWindow::new(settings_window)?;
+    let main_window = MainWindow::new(win_media_service, settings_window)?;
 
     main_window.run_blocking()?;
     Ok(())

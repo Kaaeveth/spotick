@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use tokio::sync::RwLock;
 
 use crate::service::BaseService;
 
@@ -44,6 +47,8 @@ pub enum MediaServiceError {
     #[error(transparent)]
     Other(#[from] anyhow::Error)
 }
+
+pub type SharedMediaService = Arc<RwLock<dyn MediaService>>;
 
 #[async_trait]
 /// Represents a (possibly remote) media player.

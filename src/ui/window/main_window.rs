@@ -1,29 +1,32 @@
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
-use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer};
+use slint::{ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak};
 use anyhow::Result;
 
-use crate::{callback, service::BaseService, settings, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
+use crate::{callback, service::{BaseService, PlaybackChangedEvent, SharedMediaService}, ui::{apply_border_radius, get_window_creation_settings, window::{SettingsWindow, SlintMainWindow, Window}}};
 
 pub struct MainWindow {
     ui: SlintMainWindow,
-    settings_window: SettingsWindow
+    settings_window: SettingsWindow,
+    media_service: SharedMediaService
 }
 
 impl MainWindow {
-    pub fn new(settings: SettingsWindow) -> Result<Self> {
+    pub fn new(media_service: SharedMediaService, settings: SettingsWindow) -> Result<Self> {
         let _guard_settings = get_window_creation_settings().change(|attr| {
             attr.with_skip_taskbar(true)
         });
         let app = MainWindow {
             ui: SlintMainWindow::new()?,
-            settings_window: settings
+            settings_window: settings,
+            media_service
         };
 
+        app.set_initial_thumbnail();
         app.connect_settings();
+        app.connect_media_info();
         app.enable_app_quit();
         app.enable_window_positioning();
-        app.set_initial_thumbnail();
         app.setup_ui_callbacks();
         
         Ok(app)
@@ -45,6 +48,88 @@ impl MainWindow {
         callback!(on_show_options, |_app| {
             let settings_window = settings_window.unwrap();
             let _ = settings_window.show();
+        });
+
+        let srv = self.media_service.clone();
+        callback!(on_toggle_play, |_app| {
+            tokio::spawn({
+                let srv = srv.clone();
+                async move {
+                    if let Err(e) = srv.write().await.toggle_playback().await {
+                        log::error!("Error toggling playback: {}", e);
+                    }
+                }
+            });
+        });
+
+        let srv = self.media_service.clone();
+        callback!(on_next_track, |_app| {
+            tokio::spawn({
+                let srv = srv.clone();
+                async move {
+                    if let Err(e) = srv.write().await.next_track().await {
+                        log::error!("Error skipping track: {}", e);
+                    }
+                }
+            });
+        });
+
+        let srv = self.media_service.clone();
+        callback!(on_previous_track, |_app| {
+            tokio::spawn({
+                let srv = srv.clone();
+                async move {
+                    if let Err(e) = srv.write().await.previous_track().await {
+                        log::error!("Error skipping back track: {}", e);
+                    }
+                }
+            });
+        });
+    }
+
+    async fn update_track(srv: &SharedMediaService, wui: &Weak<SlintMainWindow>) {
+        let srv_lock = srv.clone().read_owned().await;
+        let _ = wui.upgrade_in_event_loop(move |ui| {
+            if let Some(current_media_track) = srv_lock.current_track() {
+                ui.set_track_title(current_media_track.title.to_shared_string());
+                ui.set_track_subtitle(current_media_track.artist.to_shared_string());
+                // TODO: Thumbnail
+            }
+        });
+    }
+
+    async fn update_playback(srv: &SharedMediaService, wui: &Weak<SlintMainWindow>) {
+        let srv_lock = srv.clone().read_owned().await;
+        let _ = wui.upgrade_in_event_loop(move |ui| {
+            let playback_state = srv_lock.current_playback_state();
+            ui.set_playing(playback_state.is_playing);
+        });
+    }
+
+    fn connect_media_info(&self) {
+        let srv = self.media_service.clone();
+        let wui = self.ui.as_weak();
+        tokio::spawn(async move {
+            let mut media_events = srv.read().await.subscribe();
+
+            MainWindow::update_track(&srv, &wui).await;
+            MainWindow::update_playback(&srv, &wui).await;
+
+            loop {
+                let Ok(e) = media_events.recv().await else {
+                    break;
+                };
+
+                match e {
+                    PlaybackChangedEvent::TrackChanged => {
+                        MainWindow::update_track(&srv, &wui).await;
+                    },
+                    PlaybackChangedEvent::Play | PlaybackChangedEvent::Pause => {
+                        MainWindow::update_playback(&srv, &wui).await;
+                    },
+                    _ => {}
+                }
+            }
         });
     }
 
