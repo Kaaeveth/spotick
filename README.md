@@ -10,7 +10,7 @@ any changes made to the UI and an LSP for `.slint` files.
 Use [slint-viewer](https://github.com/slint-ui/slint/tree/master/tools/viewer) if you don't use VSCode.
 
 ## TODO
-* [ ] Persist widget position
+* [x] Persist widget position
 * [ ] Autostart
 * [ ] Make widget resizable/scalable
 * [ ] Display track position (seek position?)

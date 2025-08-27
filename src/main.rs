@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     win_media_service.write().await.begin_monitor_sessions()?;
 
     let settings_window = SettingsWindow::new(settings.clone())?;
-    let main_window = MainWindow::new(win_media_service, settings_window)?;
+    let main_window = MainWindow::new(win_media_service, settings_window).await?;
 
     main_window.run_blocking()?;
     Ok(())

@@ -16,9 +16,9 @@ image = { version = "0.25.6", default-features = false, features = ["png", "jpeg
 log = "0.4.27"
 serde = "1.0.219"
 serde_json = "1.0.143"
-slint = { version = "1.12.1", default-features = false, features = ["accessibility", "std", "compat-1-2", "renderer-skia", "backend-winit"] }
+slint = { version = "1.12.1", default-features = false, features = ["accessibility", "std", "compat-1-2", "renderer-skia", "backend-winit", "serde"] }
 thiserror = "2.0.16"
-tokio = { version = "1.47.1", features = ["macros", "rt", "rt-multi-thread", "fs"] }
+tokio = { version = "1.47.1", features = ["macros", "rt", "rt-multi-thread", "fs", "time"] }
 tokio-util = { version = "0.7.16", features = ["rt"] }
 windows = { version = "0.61.3", features = ["Media_Control", "Storage_Streams"] }
 

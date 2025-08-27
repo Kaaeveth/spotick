@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
@@ -6,6 +6,7 @@ use image::RgbaImage;
 use slint::{
     ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak,
 };
+use tokio::sync::watch::channel;
 
 use crate::{
     callback,
@@ -23,7 +24,7 @@ pub struct MainWindow {
 }
 
 impl MainWindow {
-    pub fn new(media_service: SharedMediaService, settings: SettingsWindow) -> Result<Self> {
+    pub async fn new(media_service: SharedMediaService, settings: SettingsWindow) -> Result<Self> {
         let _guard_settings =
             get_window_creation_settings().change(|attr| attr.with_skip_taskbar(true));
         let app = MainWindow {
@@ -34,9 +35,9 @@ impl MainWindow {
 
         app.ui.set_initial_thumbnail();
         app.connect_settings();
-        app.connect_media_info();
+        app.connect_media_info().await;
         app.enable_app_quit();
-        app.enable_window_positioning();
+        app.enable_window_positioning().await;
         app.setup_ui_callbacks();
 
         Ok(app)
@@ -108,15 +109,14 @@ impl MainWindow {
         });
     }
 
-    fn connect_media_info(&self) {
+    async fn connect_media_info(&self) {
         let srv = self.media_service.clone();
         let wui = self.ui.as_weak();
+        MainWindow::update_track(&srv, &wui).await;
+        MainWindow::update_playback(&srv, &wui).await;
+
         tokio::spawn(async move {
             let mut media_events = srv.read().await.subscribe();
-
-            MainWindow::update_track(&srv, &wui).await;
-            MainWindow::update_playback(&srv, &wui).await;
-
             loop {
                 let Ok(e) = media_events.recv().await else {
                     break;
@@ -154,15 +154,54 @@ impl MainWindow {
         });
     }
 
-    fn enable_window_positioning(&self) {
+    async fn enable_window_positioning(&self) {
         let app = &self.ui;
-        let window_pos = app.window().position();
-        app.set_window_x(window_pos.x as f32);
-        app.set_window_y(window_pos.y as f32);
+        let settings = self.settings_window.get_settings();
+
+        // Set initial position
+        {
+            let spotick_settings = settings.read().await;
+            let initial_pos = spotick_settings.get_settings().main_window_pos.clone();
+            app.set_window_x(initial_pos.x as f32);
+            app.set_window_y(initial_pos.y as f32);
+            app.window().set_position(initial_pos);
+        }
+
+        // Channel for sending notifications of window position changes
+        let (pos_tx, mut pos_rv) = channel(PhysicalPosition::new(-1, -1));
+        pos_rv.mark_unchanged();
 
         callback!(on_position_window, |app, x, y| {
             let pos = PhysicalPosition::new(x as i32, y as i32);
             app.window().set_position(pos);
+            let _ = pos_tx.send(pos);
+        });
+
+        // Save window position when it changes
+        const SAVE_TIMEOUT: Duration = Duration::from_secs(1);
+        let settings = Arc::downgrade(&settings);
+        tokio::spawn(async move {
+            loop {
+                if let Err(_) = pos_rv.changed().await {
+                    break;
+                }
+                // Wait a bit for any other potential changes before saving
+                tokio::time::sleep(SAVE_TIMEOUT).await;
+
+                if let Some(settings) = settings.upgrade() {
+                    let mut sg = settings.write().await;
+                    let spotick_settings = sg.get_settings_mut();
+                    spotick_settings.main_window_pos = pos_rv.borrow().clone();
+
+                    match sg.save().await {
+                        Ok(()) => log::info!("Window position saved"),
+                        Err(e) => log::error!("Could not save window position: {:?}", e),
+                    };
+                    pos_rv.mark_unchanged();
+                } else {
+                    break;
+                }
+            }
         });
     }
 
