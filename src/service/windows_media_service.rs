@@ -31,7 +31,13 @@ pub struct WindowsMediaService {
 fn unwrap_hstring(hstring: WinResult<HSTRING>, default: impl Into<String>) -> String {
     hstring
         .ok()
-        .and_then(|s| Some(s.to_string()))
+        .and_then(|s| {
+            if !s.is_empty() {
+                Some(s.to_string())
+            } else {
+                None
+            }
+        })
         .unwrap_or_else(|| {
             log::error!("Could not retrieve HSTRING");
             default.into()
@@ -130,6 +136,10 @@ impl WindowsMediaService {
             srv.write().await.update_playback_info()
         })?;
         self.media_playback_changed_handler = NonZero::new(handle);
+
+        self.update_current_session_info()?;
+        self.update_playback_info()?;
+
         Ok(())
     }
 
@@ -268,11 +278,11 @@ impl MediaService for WindowsMediaService {
         Ok(())
     }
 
-    async fn seek(&mut self, playback_percent: u32) -> Result<(), MediaServiceError> {
+    async fn seek(&mut self, _playback_percent: u32) -> Result<(), MediaServiceError> {
         Ok(())
     }
 
-    async fn set_volume(&mut self, volume: u32) -> Result<(), MediaServiceError> {
+    async fn set_volume(&mut self, _volume: u32) -> Result<(), MediaServiceError> {
         Ok(())
     }
 
