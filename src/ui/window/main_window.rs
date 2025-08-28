@@ -4,12 +4,13 @@ use anyhow::Result;
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
 use slint::{
-    ComponentHandle, Image, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak,
+    ComponentHandle, Image, PhysicalPosition, PhysicalSize, Rgba8Pixel, SharedPixelBuffer,
+    ToSharedString, Weak,
 };
 use tokio::sync::watch::channel;
 
 use crate::{
-    callback,
+    callback, save_changes_in_settings,
     service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService},
     ui::{
         apply_border_radius, get_window_creation_settings,
@@ -38,6 +39,7 @@ impl MainWindow {
         app.connect_media_info().await;
         app.enable_app_quit();
         app.enable_window_positioning().await;
+        app.enable_window_scaling().await;
         app.setup_ui_callbacks();
 
         Ok(app)
@@ -154,6 +156,33 @@ impl MainWindow {
         });
     }
 
+    async fn enable_window_scaling(&self) {
+        let app = &self.ui;
+        let mut scale_change_rv = self.settings_window.subscribe_scale_changed();
+        let settings = self.settings_window.get_settings();
+
+        // Set initial scale
+        {
+            let spotick_settings = settings.read().await;
+            let initial_scale = spotick_settings.get_settings().main_window_scale;
+            app.rescale(initial_scale);
+        }
+
+        let app = app.as_weak();
+        tokio::spawn(async move {
+            loop {
+                if let Err(_) = scale_change_rv.changed().await {
+                    break;
+                }
+
+                let scale = scale_change_rv.borrow_and_update().clone();
+                let _ = app.upgrade_in_event_loop(move |app| {
+                    app.rescale(scale);
+                });
+            }
+        });
+    }
+
     async fn enable_window_positioning(&self) {
         let app = &self.ui;
         let settings = self.settings_window.get_settings();
@@ -174,34 +203,12 @@ impl MainWindow {
         callback!(on_position_window, |app, x, y| {
             let pos = PhysicalPosition::new(x as i32, y as i32);
             app.window().set_position(pos);
-            let _ = pos_tx.send(pos);
+            let _ = pos_tx.send_replace(pos);
         });
 
-        // Save window position when it changes
-        const SAVE_TIMEOUT: Duration = Duration::from_secs(1);
-        let settings = Arc::downgrade(&settings);
-        tokio::spawn(async move {
-            loop {
-                if let Err(_) = pos_rv.changed().await {
-                    break;
-                }
-                // Wait a bit for any other potential changes before saving
-                tokio::time::sleep(SAVE_TIMEOUT).await;
-
-                if let Some(settings) = settings.upgrade() {
-                    let mut sg = settings.write().await;
-                    let spotick_settings = sg.get_settings_mut();
-                    spotick_settings.main_window_pos = pos_rv.borrow().clone();
-
-                    match sg.save().await {
-                        Ok(()) => log::info!("Window position saved"),
-                        Err(e) => log::error!("Could not save window position: {:?}", e),
-                    };
-                    pos_rv.mark_unchanged();
-                } else {
-                    break;
-                }
-            }
+        save_changes_in_settings!(pos_rv, settings, |sg| {
+            let spotick_settings = sg.get_settings_mut();
+            spotick_settings.main_window_pos = pos_rv.borrow().clone();
         });
     }
 
@@ -240,6 +247,17 @@ impl SlintMainWindow {
             .expect("Invalid placeholder image format");
 
         self.set_thumbnail(buffer);
+    }
+
+    fn rescale(&self, scale: f32) {
+        self.window()
+            .dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
+                scale_factor: scale,
+            });
+
+        let width = (self.get_original_window_width() as f32 * scale) as u32;
+        let height = (self.get_original_window_height() as f32 * scale) as u32;
+        self.window().set_size(PhysicalSize::new(width, height));
     }
 }
 

@@ -1,0 +1,23 @@
+import { Slider } from "std-widgets.slint";
+
+export component AnnotatedSlider {
+    in property <[float]> steps;
+    in-out property <float> value <=> slider.value;
+    callback changed <=> slider.changed;
+
+    VerticalLayout {
+        spacing: 5px;
+        slider := Slider {
+            width: 100%;
+            minimum: steps[0];
+            maximum: steps[steps.length - 1];
+        }
+        HorizontalLayout {
+            alignment: LayoutAlignment.space-between;
+            for step[idx] in steps: Text {
+                text: step;
+                font-size: 1.2rem;
+            }
+        }
+    }
+}

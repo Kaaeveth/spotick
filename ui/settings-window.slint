@@ -1,5 +1,6 @@
 import { Button } from "widgets/button.slint";
-import { LineEdit, Switch } from "std-widgets.slint";
+import { LineEdit, Switch, Slider } from "std-widgets.slint";
+import { AnnotatedSlider } from "widgets/step-slider.slint";
 
 component SettingsText inherits Text {
     font-size: 1.2rem;
@@ -16,14 +17,18 @@ export component SlintSettingsWindow inherits Window {
     in-out property <bool> auto-start <=> auto-start-switch.checked;
     in-out property <bool> always-top <=> on-top-switch.checked;
     in-out property <string> media-application-id: "";
+    in-out property <float> window-scale: 1;
 
     callback settings-changed();
+    callback scale-changed();
 
     VerticalLayout {
         padding: 15px;
         alignment: LayoutAlignment.start;
+        spacing: 10px;
         GridLayout {
             spacing: 10px;
+            spacing-vertical: 15px;
             Row {
                 SettingsText {text: "Autostart";}
                 auto-start-switch := Switch {
@@ -55,6 +60,17 @@ export component SlintSettingsWindow inherits Window {
                     Text {
                         text: "Confirm";
                         font-size: 1.5rem;
+                    }
+                }
+            }
+            Row {
+                SettingsText {text: "UI Scale";}
+                AnnotatedSlider {
+                    colspan: 2;
+                    steps: [0.5, 1, 1.5, 2];
+                    value <=> window-scale;
+                    changed(value) => {
+                        scale-changed();
                     }
                 }
             }

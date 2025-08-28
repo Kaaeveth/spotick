@@ -35,5 +35,6 @@ async fn main() -> Result<()> {
     let main_window = MainWindow::new(win_media_service, settings_window).await?;
 
     main_window.run_blocking()?;
+    settings.write().await.save().await?;
     Ok(())
 }

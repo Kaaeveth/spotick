@@ -1,5 +1,5 @@
 use crate::{
-    callback,
+    callback, save_changes_in_settings,
     service::BaseService,
     settings::SpotickAppSettings,
     ui::{
@@ -10,10 +10,13 @@ use crate::{
 use anyhow::Result;
 use i_slint_backend_winit::winit::window::WindowButtons;
 use slint::{ComponentHandle, ToSharedString};
+use std::{sync::Arc, time::Duration};
+use tokio::sync::watch::{channel, Receiver, Sender};
 
 pub struct SettingsWindow {
     ui: SlintSettingsWindow,
     app_settings: SpotickAppSettings,
+    scale_changed_tx: Sender<f32>,
 }
 
 impl SettingsWindow {
@@ -23,9 +26,11 @@ impl SettingsWindow {
         let win = SettingsWindow {
             ui: SlintSettingsWindow::new()?,
             app_settings,
+            scale_changed_tx: channel(1f32).0,
         };
 
         win.connect_settings();
+        win.connect_window_scale();
         win.setup_callbacks();
 
         Ok(win)
@@ -44,6 +49,7 @@ impl SettingsWindow {
                     ui.set_auto_start(settings.auto_start);
                     ui.set_always_top(settings.always_on_top);
                     ui.set_media_application_id(settings.source_app.to_shared_string());
+                    ui.set_window_scale(settings.main_window_scale);
                 }) {
                     break;
                 }
@@ -52,6 +58,25 @@ impl SettingsWindow {
                     break;
                 };
             }
+        });
+    }
+
+    pub fn subscribe_scale_changed(&self) -> Receiver<f32> {
+        self.scale_changed_tx.subscribe()
+    }
+
+    fn connect_window_scale(&self) {
+        let ui = &self.ui;
+        let scale_sender = self.scale_changed_tx.clone();
+
+        callback!(on_scale_changed, |ui| {
+            let scale = ui.get_window_scale();
+            let _ = scale_sender.send_replace(scale);
+        });
+
+        let mut scale_rv = self.subscribe_scale_changed();
+        save_changes_in_settings!(scale_rv, self.app_settings, |sg| {
+            sg.get_settings_mut().main_window_scale = scale_rv.borrow().clone();
         });
     }
 
@@ -69,6 +94,7 @@ impl SettingsWindow {
             let auto_start = ui.get_auto_start();
             let always_on_top = ui.get_always_top();
             let source_id = ui.get_media_application_id().to_string();
+            let scale_factor = ui.get_window_scale();
 
             tokio::spawn(async move {
                 let mut sg = settings.write().await;
@@ -77,6 +103,7 @@ impl SettingsWindow {
                     settings.auto_start = auto_start;
                     settings.always_on_top = always_on_top;
                     settings.source_app = source_id;
+                    settings.main_window_scale = scale_factor;
                     log::info!("{:?}", settings);
                 }
                 if let Err(e) = sg.save().await {

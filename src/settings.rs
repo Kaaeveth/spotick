@@ -19,6 +19,7 @@ pub struct SpotickSettings {
     pub always_on_top: bool,
     pub source_app: String,
     pub main_window_pos: PhysicalPosition,
+    pub main_window_scale: f32,
 }
 
 impl Default for SpotickSettings {
@@ -26,6 +27,7 @@ impl Default for SpotickSettings {
         SpotickSettings {
             auto_start: false,
             always_on_top: false,
+            main_window_scale: 1.0,
             source_app: String::from("spotify.exe"),
             main_window_pos: PhysicalPosition::default(),
         }

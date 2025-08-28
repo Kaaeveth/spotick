@@ -6,10 +6,13 @@ export { SlintSettingsWindow }
 
 export component SlintMainWindow inherits Window {
     height: 200px;
-    width: 440px;
+    width: 460px;
     no-frame: true;
     title: "Spotick";
     background: rgba(0,0,0,0);
+
+    out property <length> original-window-height: self.height;
+    out property <length> original-window-width: self.width;
 
     in-out property <length> window-x;
     in-out property <length> window-y;
@@ -66,7 +69,7 @@ export component SlintMainWindow inherits Window {
                         spacing: 5px;
                         Text {
                             text: track-title;
-                            font-size: 30px;
+                            font-size: 28px;
                             overflow: TextOverflow.elide;
                             width: root.width / 2;
                         }
@@ -90,6 +93,7 @@ export component SlintMainWindow inherits Window {
                             }
                             MediaButton {
                                 clicked => {toggle-play();}
+                                size: 35px;
                                 btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
                             }
                             VerticalLayout {
