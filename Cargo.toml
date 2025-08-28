@@ -21,6 +21,7 @@ thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["macros", "rt", "rt-multi-thread", "fs", "time"] }
 tokio-util = { version = "0.7.16", features = ["rt"] }
 windows = { version = "0.61.3", features = ["Media_Control", "Storage_Streams"] }
+winreg = "0.55.0"
 
 [build-dependencies]
 slint-build = "1.12.1"

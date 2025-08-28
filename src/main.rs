@@ -4,6 +4,7 @@
 use anyhow::Result;
 
 use crate::{
+    autostart::register_autostart_changed,
     service::WindowsMediaService,
     settings::{AppSettings, SpotickSettings},
     ui::{
@@ -12,6 +13,7 @@ use crate::{
     },
 };
 
+mod autostart;
 mod service;
 mod settings;
 mod ui;
@@ -23,6 +25,7 @@ async fn main() -> Result<()> {
 
     let settings = AppSettings::<SpotickSettings>::default()?;
     settings.write().await.load().await?;
+    register_autostart_changed(settings.clone()).await;
 
     let win_media_service =
         WindowsMediaService::new(settings.read().await.get_settings().source_app.clone());

@@ -11,7 +11,7 @@ Use [slint-viewer](https://github.com/slint-ui/slint/tree/master/tools/viewer) i
 
 ## TODO
 * [x] Persist widget position
-* [ ] Autostart
+* [x] Autostart
 * [ ] Make widget resizable/scalable
 * [ ] Display track position (seek position?)
 * [ ] Display and change volume
