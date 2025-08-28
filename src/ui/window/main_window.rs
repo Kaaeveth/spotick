@@ -162,10 +162,16 @@ impl MainWindow {
         let settings = self.settings_window.get_settings();
 
         // Set initial scale
+        // Since the window is not yet created, we have to queue the rescale onto the event loop
+        // which should start shortly after this call.
         {
             let spotick_settings = settings.read().await;
             let initial_scale = spotick_settings.get_settings().main_window_scale;
-            app.rescale(initial_scale);
+            app.as_weak()
+                .upgrade_in_event_loop(move |app| {
+                    app.rescale(initial_scale);
+                })
+                .unwrap();
         }
 
         let app = app.as_weak();
