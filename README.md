@@ -1,7 +1,9 @@
 # Spotick
-A simple and lightweight Windows widget for media applications like Spotify.
+A simple and lightweight Windows [widget](https://en.wikipedia.org/wiki/Software_widget) for media applications like Spotify.
 Unlike the built-in Windows media UI, Spotick allows to select one application to display media information for.
 Any application using the Windows Media Control is supported.
+
+![Spotick](https://github.com/user-attachments/assets/0792d980-b1f6-470a-83e4-b4312510a367)
 
 ## Development
 Simply use `cargo` to compile and run the project.
