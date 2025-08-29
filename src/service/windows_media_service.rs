@@ -211,21 +211,7 @@ impl WindowsMediaService {
         let media_props = session.TryGetMediaPropertiesAsync()?.get()?;
         let timeline_props = session.GetTimelineProperties()?;
 
-        // WinRt triggers the MediaPropertiesChanged event twice in succession - Once for title and such and once for the thumbnail.
-        // We only want to publish the change once and so we check if we have already published the current track based on the title and its length.
-        // It is highly unlikely that two different tracks with the same title and length are being played in succession.
-        // That way, we know that an event got triggered twice.
         let title_length = convert_ticks_to_seconds(timeline_props.MaxSeekTime()?.Duration);
-        let title = unwrap_hstring(media_props.Title(), "No Title");
-        if let Some(track) = &self.current_track {
-            // We might need to update the thumbnail if we don't have one
-            // In that case we still handle the event
-            if !track.album_cover.is_none() && track.length == title_length && track.title == title
-            {
-                return Ok(());
-            }
-        }
-
         let track = if title_length > 0 {
             let album_cover = match media_props.Thumbnail() {
                 Ok(s) => match WindowsMediaService::read_thumbnail(s) {
@@ -241,7 +227,7 @@ impl WindowsMediaService {
             Some(MediaTrack {
                 album_title: unwrap_hstring(media_props.AlbumTitle(), "No Title"),
                 artist: unwrap_hstring(media_props.Artist(), "No Artist"),
-                title,
+                title: unwrap_hstring(media_props.Title(), "No Title"),
                 length: title_length,
                 album_cover,
             })
