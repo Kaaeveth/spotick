@@ -1,6 +1,6 @@
 [package]
 name = "spotick"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Dominik Strutz"]
 description = "Simple and lightweight Windows widget for media applications like Spotify"
