@@ -33,3 +33,27 @@ impl Default for SpotickSettings {
         }
     }
 }
+
+#[macro_export]
+macro_rules! on_settings_changed {
+    ($settings:expr, |$spotick_settings:ident|$handler:block) => {
+        let mut settings_rv = $settings.read().await.subscribe();
+        let settings = Arc::downgrade(&$settings);
+
+        tokio::spawn(async move {
+            loop {
+                if let Some(settings) = settings.upgrade() {
+                    let sg = settings.read().await;
+                    let $spotick_settings = sg.get_settings();
+                    $handler
+                } else {
+                    break;
+                }
+
+                if let Err(_) = settings_rv.recv().await {
+                    break;
+                }
+            }
+        });
+    };
+}

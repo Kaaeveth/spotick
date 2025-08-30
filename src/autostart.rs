@@ -6,7 +6,7 @@ use winreg::{
     RegKey,
 };
 
-use crate::{service::BaseService, settings::SpotickAppSettings};
+use crate::{on_settings_changed, service::BaseService, settings::SpotickAppSettings};
 
 const AUTO_START_KEY: &'static str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 const AUTO_START_VALUE_NAME: &'static str = env!("CARGO_PKG_NAME");
@@ -60,29 +60,16 @@ pub fn is_autostart_enabled() -> Result<bool> {
 }
 
 pub async fn register_autostart_changed(settings: SpotickAppSettings) {
-    let mut settings_rv = settings.read().await.subscribe();
-    let settings = Arc::downgrade(&settings);
+    on_settings_changed!(settings, |settings| {
+        let auto_start_set = settings.auto_start;
+        let res = if auto_start_set {
+            enable_autostart()
+        } else {
+            disable_autostart()
+        };
 
-    tokio::spawn(async move {
-        loop {
-            if let Some(settings) = settings.upgrade() {
-                let auto_start_set = settings.read().await.get_settings().auto_start;
-                let res = if auto_start_set {
-                    enable_autostart()
-                } else {
-                    disable_autostart()
-                };
-
-                if let Err(e) = res {
-                    log::error!("Could not toggle autostart: {}", e);
-                }
-            } else {
-                break;
-            }
-
-            if let Err(_) = settings_rv.recv().await {
-                break;
-            }
+        if let Err(e) = res {
+            log::error!("Could not toggle autostart: {}", e);
         }
     });
 }
