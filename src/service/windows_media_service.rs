@@ -372,6 +372,17 @@ impl MediaService for WindowsMediaService {
         Ok(())
     }
 
+    fn set_source_app_id(&mut self, app_id: String) -> Result<(), MediaServiceError> {
+        self.end_monitor_sessions();
+        self.source_app_id = app_id;
+        self.begin_monitor_sessions()?;
+        Ok(())
+    }
+
+    fn get_source_app_id(&self) -> &str {
+        &self.source_app_id
+    }
+
     fn current_track(&self) -> Option<&MediaTrack> {
         self.current_track.as_ref()
     }

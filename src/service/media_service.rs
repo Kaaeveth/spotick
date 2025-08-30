@@ -99,6 +99,15 @@ pub trait MediaService: BaseService<PlaybackChangedEvent> {
     /// [volume] must be between 0 and 100 (inclusive) and will be clamped otherwise.
     async fn set_volume(&mut self, volume: u32) -> Result<(), MediaServiceError>;
 
+    /// Sets the id of the media application to be controled and observed for changes.
+    /// This id is platform dependent.
+    /// On Windows, for example, it is the name of the application executable.
+    fn set_source_app_id(&mut self, app_id: String) -> Result<(), MediaServiceError>;
+
+    /// Gets the id of the currently controled and observed media application.
+    /// See [MediaService::set_source_app_id] for more.
+    fn get_source_app_id(&self) -> &str;
+
     fn current_track(&self) -> Option<&MediaTrack>;
     fn current_playback_state(&self) -> &PlaybackState;
 

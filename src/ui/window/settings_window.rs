@@ -1,6 +1,6 @@
 use crate::{
     callback, save_changes_in_settings,
-    service::BaseService,
+    service::{BaseService, SharedMediaService},
     settings::SpotickAppSettings,
     ui::{
         get_window_creation_settings,
@@ -16,15 +16,20 @@ use tokio::sync::watch::{channel, Receiver, Sender};
 pub struct SettingsWindow {
     ui: SlintSettingsWindow,
     app_settings: SpotickAppSettings,
+    media_service: SharedMediaService,
     scale_changed_tx: Sender<f32>,
 }
 
 impl SettingsWindow {
-    pub fn new(app_settings: SpotickAppSettings) -> Result<Self> {
+    pub fn new(
+        app_settings: SpotickAppSettings,
+        media_service: SharedMediaService,
+    ) -> Result<Self> {
         let _settings_guard = get_window_creation_settings()
             .change(|attr| attr.with_enabled_buttons(WindowButtons::CLOSE));
         let win = SettingsWindow {
             ui: SlintSettingsWindow::new()?,
+            media_service,
             app_settings,
             scale_changed_tx: channel(1f32).0,
         };
@@ -88,8 +93,10 @@ impl SettingsWindow {
         let ui = &self.ui;
 
         let settings = self.app_settings.clone();
+        let media_service = Arc::downgrade(&self.media_service);
         callback!(on_settings_changed, |ui| {
             let settings = settings.clone();
+            let media_service = media_service.clone();
 
             let auto_start = ui.get_auto_start();
             let always_on_top = ui.get_always_top();
@@ -108,6 +115,17 @@ impl SettingsWindow {
                 }
                 if let Err(e) = sg.save().await {
                     log::error!("Failed to save settings: {}", e);
+                }
+
+                if let Some(media_service) = media_service.upgrade() {
+                    let mut mg = media_service.write().await;
+                    let new_source_app = &sg.get_settings().source_app;
+
+                    if new_source_app != mg.get_source_app_id() {
+                        if let Err(e) = mg.set_source_app_id(new_source_app.clone()) {
+                            log::error!("Could not set source app: {}", e);
+                        }
+                    }
                 }
             });
         });
