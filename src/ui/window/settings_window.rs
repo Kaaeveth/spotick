@@ -4,12 +4,12 @@ use crate::{
     settings::SpotickAppSettings,
     ui::{
         get_window_creation_settings,
-        window::{SlintSettingsWindow, Window},
+        window::{MsgType, SlintSettingsWindow, Window},
     },
 };
 use anyhow::Result;
 use i_slint_backend_winit::winit::window::WindowButtons;
-use slint::{ComponentHandle, ToSharedString};
+use slint::{ComponentHandle, SharedString, ToSharedString, Weak};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::watch::{channel, Receiver, Sender};
 
@@ -103,6 +103,7 @@ impl SettingsWindow {
             let source_id = ui.get_media_application_id().to_string();
             let scale_factor = ui.get_window_scale();
 
+            let ui = ui.as_weak();
             tokio::spawn(async move {
                 let mut sg = settings.write().await;
                 {
@@ -113,10 +114,18 @@ impl SettingsWindow {
                     settings.main_window_scale = scale_factor;
                     log::info!("{:?}", settings);
                 }
+
+                // Save settings
+                show_msg(&ui, "Saving...", MsgType::Info);
                 if let Err(e) = sg.save().await {
-                    log::error!("Failed to save settings: {}", e);
+                    let msg = format!("Failed to save settings: {}", e);
+                    log::error!("{msg}");
+                    show_msg(&ui, msg, MsgType::Error);
+                } else {
+                    show_msg(&ui, "Settings saved", MsgType::Success);
                 }
 
+                // Apply possible changes to the media service
                 if let Some(media_service) = media_service.upgrade() {
                     let mut mg = media_service.write().await;
                     let new_source_app = &sg.get_settings().source_app;
@@ -136,4 +145,11 @@ impl Window<SlintSettingsWindow> for SettingsWindow {
     fn component(&self) -> &SlintSettingsWindow {
         &self.ui
     }
+}
+
+fn show_msg(ui: &Weak<SlintSettingsWindow>, msg: impl Into<SharedString>, success: MsgType) {
+    let msg = msg.into();
+    let _ = ui.upgrade_in_event_loop(move |ui| {
+        ui.invoke_show_msg(msg, success);
+    });
 }

@@ -8,6 +8,12 @@ component SettingsText inherits Text {
     horizontal-alignment: TextHorizontalAlignment.left;
 }
 
+export enum MsgType {
+    Success,
+    Error,
+    Info
+}
+
 export component SlintSettingsWindow inherits Window {
     title: "Spotick Settings";
     width: 400px;
@@ -21,6 +27,20 @@ export component SlintSettingsWindow inherits Window {
 
     callback settings-changed();
     callback scale-changed();
+
+    public function show-msg(msg: string, type: MsgType) {
+        msg-text-timer.running = false;
+        msg-text.text = msg;
+        if type == MsgType.Success {
+            msg-text.color = Colors.green;
+        } else if type == MsgType.Error {
+            msg-text.color = Colors.red;
+        } else {
+            msg-text.color = Colors.aliceblue.darker(0.25);
+        }
+        msg-text.visible = true;
+        msg-text-timer.running = true;
+    }
 
     VerticalLayout {
         padding: 15px;
@@ -74,6 +94,19 @@ export component SlintSettingsWindow inherits Window {
                     }
                 }
             }
+        }
+        msg-text := Text {
+            visible: false;
+            font-size: 20px;
+        }
+    }
+    
+    msg-text-timer := Timer {
+        interval: 3000ms;
+        running: false;
+        triggered => {
+            msg-text-timer.running = false;
+            msg-text.visible = false;
         }
     }
 }
