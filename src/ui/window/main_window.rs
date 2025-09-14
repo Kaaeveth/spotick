@@ -4,7 +4,7 @@ use anyhow::Result;
 use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
 use image::RgbaImage;
 use slint::{
-    ComponentHandle, Image, PhysicalPosition, PhysicalSize, Rgba8Pixel, SharedPixelBuffer,
+    ComponentHandle, Image, LogicalSize, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer,
     ToSharedString, Weak,
 };
 use tokio::sync::watch::channel;
@@ -256,14 +256,23 @@ impl SlintMainWindow {
     }
 
     fn rescale(&self, scale: f32) {
+        let width = self.get_original_window_width() as f32 * scale;
+        let height = self.get_original_window_height() as f32 * scale;
+
+        // We set the window size through a platform event
+        // instead of using [Window::set_size] since this method
+        // doesn't work when setting the initial scale at app startup.
+        // idk why, probably because the window doesn't exist yet
+        // but events (using dispatch_event) are still getting queued
+        self.window()
+            .dispatch_event(slint::platform::WindowEvent::Resized {
+                size: LogicalSize::new(width, height),
+            });
+
         self.window()
             .dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
                 scale_factor: scale,
             });
-
-        let width = (self.get_original_window_width() as f32 * scale) as u32;
-        let height = (self.get_original_window_height() as f32 * scale) as u32;
-        self.window().set_size(PhysicalSize::new(width, height));
     }
 }
 
