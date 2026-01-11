@@ -1,5 +1,5 @@
 import { Button } from "widgets/button.slint";
-import { LineEdit, Switch, Slider } from "std-widgets.slint";
+import { LineEdit, Switch, Slider, ListView, StandardListView, Palette } from "std-widgets.slint";
 import { AnnotatedSlider } from "widgets/step-slider.slint";
 
 component SettingsText inherits Text {
@@ -27,6 +27,7 @@ export component SlintSettingsWindow inherits Window {
 
     callback settings-changed();
     callback scale-changed();
+    callback select-session();
 
     public function show-msg(msg: string, type: MsgType) {
         msg-text-timer.running = false;
@@ -63,8 +64,12 @@ export component SlintSettingsWindow inherits Window {
             }
             Row {
                 SettingsText {text: "Media application";}
-                LineEdit {
-                    text <=> media-application-id;
+                Text {
+                    text: media-application-id;
+                    vertical-alignment: TextVerticalAlignment.center;
+                    wrap: TextWrap.char-wrap;
+                    font-size: 1.2rem;
+                    width: root.width/4;
                 }
                 Button {
                     background-color: gray.darker(0.7);
@@ -73,13 +78,11 @@ export component SlintSettingsWindow inherits Window {
                     height: 30px;
                     border-radius: 4px;
                     clicked => {
-                        if !media-application-id.is-empty {
-                            settings-changed();
-                        }
+                        select-session();
                     }
                     Text {
-                        text: "Confirm";
-                        font-size: 1.5rem;
+                        text: "Select";
+                        font-size: 1.3rem;
                     }
                 }
             }
@@ -100,7 +103,7 @@ export component SlintSettingsWindow inherits Window {
             font-size: 20px;
         }
     }
-    
+
     msg-text-timer := Timer {
         interval: 3000ms;
         running: false;

@@ -142,6 +142,9 @@ impl WindowsMediaService {
     }
 
     /// Starts monitoring for the media session identified by its source app id.
+    /// We also monitor all media sessions in the background on availability.
+    /// If the [self.source_session] becomes unavailable, we stop monitoring that session
+    /// and resume if it becomes available again.
     /// Does nothing if already started.
     pub fn begin_monitor_sessions(&mut self) -> Result<(), MediaServiceError> {
         if self.sessions_changed_handler.is_some() {
@@ -156,6 +159,8 @@ impl WindowsMediaService {
         Ok(())
     }
 
+    /// Actually begins monitoring the selected [self.source_session] for changes.
+    /// Does nothing if already monitoring.
     fn begin_monitor_source_session(&mut self) -> Result<(), MediaServiceError> {
         if self.media_properties_changed_handler.is_some()
             || self.media_playback_changed_handler.is_some()
@@ -189,8 +194,9 @@ impl WindowsMediaService {
 
     fn update_sessions(&mut self) -> Result<(), MediaServiceError> {
         for session in self.manager.GetSessions()? {
-            log::debug!("Found source with id: {}", session.SourceAppUserModelId()?);
-            if session.SourceAppUserModelId()?.to_string().to_lowercase() == self.source_app_id {
+            let session_app_id = session.SourceAppUserModelId()?.to_string();
+            log::debug!("Found source with id: {}", &session_app_id);
+            if session_app_id.eq_ignore_ascii_case(&self.source_app_id) {
                 if self.source_session.is_none() {
                     self.source_session = Some(session);
                     self.begin_monitor_source_session()?;
@@ -381,6 +387,21 @@ impl MediaService for WindowsMediaService {
 
     fn get_source_app_id(&self) -> &str {
         &self.source_app_id
+    }
+
+    fn get_available_source_apps_ids(&self) -> Result<Vec<String>, MediaServiceError> {
+        let app_ids = self
+            .manager
+            .GetSessions()?
+            .into_iter()
+            .map(|session| {
+                session
+                    .SourceAppUserModelId()
+                    .unwrap_or_default()
+                    .to_string()
+            })
+            .collect();
+        Ok(app_ids)
     }
 
     fn current_track(&self) -> Option<&MediaTrack> {

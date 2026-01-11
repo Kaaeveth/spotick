@@ -1,0 +1,59 @@
+import { ListView, Button } from "std-widgets.slint";
+import { Palette } from "std-widgets.slint";
+
+export component SlintAvailableSessionsWindow inherits Dialog {
+    title: "Select Session";
+    height: 300px;
+    width: 250px;
+    background: #1c1c1c;
+
+    in property <[string]> session-ids: ["test", "test2"];
+    property <int> selected-session-idx: -1;
+    callback select-session(string);
+
+    pure function is-valid-selection() -> bool {
+        return selected-session-idx >= 0 && selected-session-idx < session-ids.length;
+    }
+
+    VerticalLayout {
+        padding: 8px;
+        VerticalLayout {
+            Text {
+                text: "Available Sessions:";
+                font-weight: 600;
+                font-size: 1.3rem;
+            }
+            Rectangle {height: 10px;}
+            ListView {
+                for session[idx] in session-ids: Rectangle {
+                    background: idx == selected-session-idx ? Palette.accent-background : root.background;
+                    width: parent.width;
+                    height: 25px;
+                    border-radius: 6px;
+                    TouchArea {
+                        clicked => {
+                            selected-session-idx = idx;
+                        }
+                        Text {
+                            text: session;
+                            horizontal-alignment: TextHorizontalAlignment.left;
+                            vertical-alignment: TextVerticalAlignment.center;
+                            x: 5px;
+                            color: idx == selected-session-idx ? Colors.black : Colors.white;
+                            font-size: 1.3rem;
+                        }
+                    }
+                }
+            }
+        }
+        Button {
+            text: "Select";
+            enabled: is-valid-selection();
+            clicked => {
+                if is-valid-selection() {
+                    select-session(session-ids[selected-session-idx]);
+                }
+            }
+        }
+    }
+}

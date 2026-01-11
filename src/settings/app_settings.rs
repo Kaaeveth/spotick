@@ -21,12 +21,10 @@ pub struct AppSettings<S> {
 #[cfg(windows)]
 fn get_default_save_path() -> PathBuf {
     #[cfg(debug_assertions)]
-    static RELATIVE_SAVE_PATH: &str =
-        concat!(env!("CARGO_PKG_NAME"), "/settings-dbg.json");
+    static RELATIVE_SAVE_PATH: &str = concat!(env!("CARGO_PKG_NAME"), "/settings-dbg.json");
 
     #[cfg(not(debug_assertions))]
-    static RELATIVE_SAVE_PATH: &str =
-        concat!(env!("CARGO_PKG_NAME"), "/settings.json");
+    static RELATIVE_SAVE_PATH: &str = concat!(env!("CARGO_PKG_NAME"), "/settings.json");
 
     let app_data = std::env::var("APPDATA").expect("APPDATA should be present");
     Path::new(&app_data).join(RELATIVE_SAVE_PATH)

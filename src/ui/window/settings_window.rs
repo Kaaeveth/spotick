@@ -1,16 +1,18 @@
 use crate::{
-    callback, save_changes_in_settings,
+    callback, close_dialog, save_changes_in_settings,
     service::{BaseService, SharedMediaService},
     settings::SpotickAppSettings,
     ui::{
         get_window_creation_settings,
-        window::{MsgType, SlintSettingsWindow, Window},
+        window::{
+            DialogWindow, MsgType, SlintAvailableSessionsWindow, SlintSettingsWindow, Window,
+        },
     },
 };
 use anyhow::Result;
 use i_slint_backend_winit::winit::window::WindowButtons;
-use slint::{ComponentHandle, SharedString, ToSharedString, Weak};
-use std::{sync::Arc, time::Duration};
+use slint::{ComponentHandle, ModelRc, SharedString, ToSharedString, VecModel, Weak};
+use std::{rc::Rc, sync::Arc, time::Duration};
 use tokio::sync::watch::{channel, Receiver, Sender};
 
 pub struct SettingsWindow {
@@ -119,7 +121,6 @@ impl SettingsWindow {
                 show_msg(&ui, "Saving...", MsgType::Info);
                 if let Err(e) = sg.save().await {
                     let msg = format!("Failed to save settings: {}", e);
-                    log::error!("{msg}");
                     show_msg(&ui, msg, MsgType::Error);
                 } else {
                     show_msg(&ui, "Settings saved", MsgType::Success);
@@ -138,6 +139,57 @@ impl SettingsWindow {
                 }
             });
         });
+
+        // Open window displaying all available sessions when requested
+        let media_service = Arc::downgrade(&self.media_service);
+        callback!(on_select_session, |ui| {
+            if let Some(media_service) = media_service.upgrade() {
+                match media_service
+                    .blocking_read()
+                    .get_available_source_apps_ids()
+                {
+                    Ok(sessions) => {
+                        let sessions: Vec<SharedString> =
+                            sessions.into_iter().map(SharedString::from).collect();
+                        let dialog = DialogWindow::new(
+                            ui.clone_strong(),
+                            move |dialog_res| {
+                                let win = SlintAvailableSessionsWindow::new()?;
+                                win.set_session_ids(ModelRc::from(Rc::new(VecModel::from(
+                                    sessions,
+                                ))));
+                                callback!(on_select_session, |win, res| {
+                                    *dialog_res.borrow_mut() = Some(res);
+                                    close_dialog!(win);
+                                });
+                                Ok(win)
+                            },
+                            |attr| attr.with_enabled_buttons(WindowButtons::CLOSE),
+                        )
+                        .unwrap();
+                        dialog
+                            .show_dialog({
+                                let ui = ui.as_weak();
+                                move |res| {
+                                    if let Some(res) = res {
+                                        let _ = ui.upgrade_in_event_loop(move |ui| {
+                                            ui.set_media_application_id(res);
+                                            ui.invoke_settings_changed();
+                                        });
+                                    }
+                                }
+                            })
+                            .unwrap();
+                    }
+                    Err(e) => {
+                        let msg = format!("Could not get sessions: {}", e);
+                        show_msg(&ui.as_weak(), msg, MsgType::Error);
+                    }
+                }
+            } else {
+                show_msg(&ui.as_weak(), "BUG: No media service", MsgType::Error);
+            }
+        });
     }
 }
 
@@ -149,6 +201,10 @@ impl Window<SlintSettingsWindow> for SettingsWindow {
 
 fn show_msg(ui: &Weak<SlintSettingsWindow>, msg: impl Into<SharedString>, success: MsgType) {
     let msg = msg.into();
+    match success {
+        MsgType::Success | MsgType::Info => log::info!("{msg}"),
+        MsgType::Error => log::error!("{msg}"),
+    };
     let _ = ui.upgrade_in_event_loop(move |ui| {
         ui.invoke_show_msg(msg, success);
     });

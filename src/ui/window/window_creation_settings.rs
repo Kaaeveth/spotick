@@ -45,7 +45,7 @@ impl WindowCreationSettings {
 
     pub fn change(
         &mut self,
-        change: impl Fn(WindowAttributes) -> WindowAttributes + 'static,
+        change: impl FnOnce(WindowAttributes) -> WindowAttributes + 'static,
     ) -> SettingsChangedGuard {
         let new_attr = change(self.default_settings.clone());
         let guard = SettingsChangedGuard {

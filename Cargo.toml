@@ -1,6 +1,6 @@
 [package]
 name = "spotick"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Dominik Strutz"]
 description = "Simple and lightweight Windows widget for media applications like Spotify"
@@ -16,7 +16,7 @@ image = { version = "0.25.6", default-features = false, features = ["png", "jpeg
 log = "0.4.27"
 serde = "1.0.219"
 serde_json = "1.0.143"
-slint = { version = "1.12.1", default-features = false, features = ["accessibility", "std", "compat-1-2", "renderer-skia", "backend-winit", "serde"] }
+slint = { version = "1.12.1", default-features = false, features = ["accessibility", "std", "compat-1-2", "renderer-skia", "backend-winit", "serde", "raw-window-handle-06"] }
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["macros", "rt", "rt-multi-thread", "fs", "time"] }
 tokio-util = { version = "0.7.16", features = ["rt"] }

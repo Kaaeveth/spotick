@@ -108,6 +108,9 @@ pub trait MediaService: BaseService<PlaybackChangedEvent> {
     /// See [MediaService::set_source_app_id] for more.
     fn get_source_app_id(&self) -> &str;
 
+    /// Gets all available media app IDs which can be monitored.
+    fn get_available_source_apps_ids(&self) -> Result<Vec<String>, MediaServiceError>;
+
     fn current_track(&self) -> Option<&MediaTrack>;
     fn current_playback_state(&self) -> &PlaybackState;
 
