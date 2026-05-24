@@ -6,14 +6,17 @@ export component OptionsButton inherits Button {
 
     callback on-close();
     callback on-options();
+    in property <string> more-vert: "M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z";
 
     clicked => {
         options.show();
     }
 
-    Text {
-        text: "⁝";
-        font-size: 16px;
+    Path {
+        stroke: #d4d4d4;
+        fill: #d4d4d4;
+        commands: more-vert;
+        transform-scale: 0.6;
     }
 
     options := PopupWindow {
@@ -39,10 +42,13 @@ export component OptionsButton inherits Button {
                         text: "Options";
                     }
                 }
+
                 Button {
                     hover-background-color: #d35454;
                     border-radius: 5px;
-                    clicked => {on-close()}
+                    clicked => {
+                        on-close()
+                    }
                     Text {
                         text: "Close";
                     }
