@@ -7,6 +7,10 @@ Any application using the Windows Media Control is supported.
 ![Spotick](https://github.com/user-attachments/assets/4910fcf7-e9e4-44c1-a208-05fb94cc1561)
 ![Spotick-Spotify](https://github.com/user-attachments/assets/9043d20a-8435-4cd8-bb21-6c3f33032dca)
 
+## Usage
+Simply start spotick.exe and configure your preferences in the options.
+Use can use `Ctrl` to make the app semi-transparent.
+
 ## Development
 Simply use `cargo` to compile and run the project.
 The [Slint.slint](https://marketplace.visualstudio.com/items?itemName=Slint.slint) extension for VSCode allows to preview
