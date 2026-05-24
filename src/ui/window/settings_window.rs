@@ -1,7 +1,7 @@
 use crate::{
     callback, close_dialog, save_changes_in_settings,
     service::{BaseService, SharedMediaService},
-    settings::SpotickAppSettings,
+    settings::{SpotickAppSettings, SpotickSettings},
     ui::{
         get_window_creation_settings,
         window::{
@@ -20,6 +20,7 @@ pub struct SettingsWindow {
     app_settings: SpotickAppSettings,
     media_service: SharedMediaService,
     scale_changed_tx: Sender<f32>,
+    phantom_transparency_changed_tx: Sender<f32>
 }
 
 impl SettingsWindow {
@@ -34,15 +35,17 @@ impl SettingsWindow {
             media_service,
             app_settings,
             scale_changed_tx: channel(1f32).0,
+            phantom_transparency_changed_tx: channel(1f32).0
         };
 
         win.connect_settings();
-        win.connect_window_scale();
+        win.connect_slider_settings();
         win.setup_callbacks();
 
         Ok(win)
     }
 
+    /// Update the ui if settings change with the new values
     fn connect_settings(&self) {
         let settings = self.app_settings.clone();
         let wui = self.ui.as_weak();
@@ -57,6 +60,7 @@ impl SettingsWindow {
                     ui.set_always_top(settings.always_on_top);
                     ui.set_media_application_id(settings.source_app.to_shared_string());
                     ui.set_window_scale(settings.main_window_scale);
+                    ui.set_ui_phantom_transparency(settings.phantom_transparency.unwrap_or_else(||SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY));
                 }) {
                     break;
                 }
@@ -72,18 +76,27 @@ impl SettingsWindow {
         self.scale_changed_tx.subscribe()
     }
 
-    fn connect_window_scale(&self) {
+    fn connect_slider_settings(&self) {
         let ui = &self.ui;
         let scale_sender = self.scale_changed_tx.clone();
+        let transparency_sender = self.phantom_transparency_changed_tx.clone();
 
         callback!(on_scale_changed, |ui| {
             let scale = ui.get_window_scale();
             let _ = scale_sender.send_replace(scale);
         });
+        callback!(on_phantom_transparency_changed, |ui| {
+           let transparency = ui.get_ui_phantom_transparency();
+           let _ = transparency_sender.send_replace(transparency);
+        });
 
         let mut scale_rv = self.subscribe_scale_changed();
         save_changes_in_settings!(scale_rv, self.app_settings, |sg| {
             sg.get_settings_mut().main_window_scale = scale_rv.borrow().clone();
+        });
+        let mut transparency_rv = self.phantom_transparency_changed_tx.subscribe();
+        save_changes_in_settings!(transparency_rv, self.app_settings, |sg| {
+            sg.get_settings_mut().phantom_transparency = Some(transparency_rv.borrow().clone());
         });
     }
 
@@ -104,6 +117,7 @@ impl SettingsWindow {
             let always_on_top = ui.get_always_top();
             let source_id = ui.get_media_application_id().to_string();
             let scale_factor = ui.get_window_scale();
+            let phantom_transparency = ui.get_ui_phantom_transparency();
 
             let ui = ui.as_weak();
             tokio::spawn(async move {
@@ -114,6 +128,7 @@ impl SettingsWindow {
                     settings.always_on_top = always_on_top;
                     settings.source_app = source_id;
                     settings.main_window_scale = scale_factor;
+                    settings.phantom_transparency = Some(phantom_transparency);
                     log::info!("{:?}", settings);
                 }
 

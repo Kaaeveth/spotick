@@ -1,5 +1,12 @@
 import { Button } from "widgets/button.slint";
-import { LineEdit, Switch, Slider, ListView, StandardListView, Palette } from "std-widgets.slint";
+import {
+    LineEdit,
+    Switch,
+    Slider,
+    ListView,
+    StandardListView,
+    Palette,
+} from "std-widgets.slint";
 import { AnnotatedSlider } from "widgets/step-slider.slint";
 
 component SettingsText inherits Text {
@@ -24,10 +31,12 @@ export component SlintSettingsWindow inherits Window {
     in-out property <bool> always-top <=> on-top-switch.checked;
     in-out property <string> media-application-id: "";
     in-out property <float> window-scale: 1;
+    in-out property <float> ui-phantom-transparency: 0.6;
 
     callback settings-changed();
     callback scale-changed();
     callback select-session();
+    callback phantom-transparency-changed();
 
     public function show-msg(msg: string, type: MsgType) {
         msg-text-timer.running = false;
@@ -51,26 +60,42 @@ export component SlintSettingsWindow inherits Window {
             spacing: 10px;
             spacing-vertical: 15px;
             Row {
-                SettingsText {text: "Autostart";}
+                SettingsText {
+                    text: "Autostart";
+                }
+
                 auto-start-switch := Switch {
-                    toggled => {settings-changed()}
+                    toggled => {
+                        settings-changed()
+                    }
                 }
             }
+
             Row {
-                SettingsText {text: "Always on top";}
+                SettingsText {
+                    text: "Always on top";
+                }
+
                 on-top-switch := Switch {
-                    toggled => {settings-changed()}
+                    toggled => {
+                        settings-changed()
+                    }
                 }
             }
+
             Row {
-                SettingsText {text: "Media application";}
+                SettingsText {
+                    text: "Media application";
+                }
+
                 Text {
                     text: media-application-id;
                     vertical-alignment: TextVerticalAlignment.center;
                     wrap: TextWrap.char-wrap;
                     font-size: 1.2rem;
-                    width: root.width/4;
+                    width: root.width / 4;
                 }
+
                 Button {
                     background-color: gray.darker(0.7);
                     hover-background-color: gray.darker(0.9);
@@ -86,8 +111,12 @@ export component SlintSettingsWindow inherits Window {
                     }
                 }
             }
+
             Row {
-                SettingsText {text: "UI Scale";}
+                SettingsText {
+                    text: "UI Scale";
+                }
+
                 AnnotatedSlider {
                     colspan: 2;
                     steps: [0.5, 1, 1.5, 2];
@@ -97,7 +126,23 @@ export component SlintSettingsWindow inherits Window {
                     }
                 }
             }
+
+            Row {
+                SettingsText {
+                    text: "UI Phantom-Transparency";
+                }
+
+                AnnotatedSlider {
+                    colspan: 2;
+                    steps: [0.1, 0.5, 1];
+                    value <=> ui-phantom-transparency;
+                    changed(value) => {
+                        phantom-transparency-changed();
+                    }
+                }
+            }
         }
+
         msg-text := Text {
             visible: false;
             font-size: 20px;

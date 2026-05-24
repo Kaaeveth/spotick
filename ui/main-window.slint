@@ -17,6 +17,7 @@ export component SlintMainWindow inherits Window {
 
     in-out property <length> window-x;
     in-out property <length> window-y;
+    out property <bool> is-phantom: false;
     out property <length> thumbnail-border-radius: 8px;
     out property <image> thumbnail-placeholder: @image-url("assets/thumbnail-placeholder.png");
     in property <image> thumbnail-img: thumbnail-placeholder;
@@ -31,6 +32,16 @@ export component SlintMainWindow inherits Window {
         position-window(window-x, window-y);
     }
 
+    public function set-phantom(phantom: bool, alpha: float) {
+        if (phantom) {
+            rg.opacity = alpha;
+            is-phantom = true;
+        } else {
+            rg.opacity = 1;
+            is-phantom = false;
+        }
+    }
+
     callback quit();
     callback show-options();
     callback position-window(x: length, y: length);
@@ -39,8 +50,10 @@ export component SlintMainWindow inherits Window {
     callback previous-track();
 
     ta := SwipeGestureHandler {
-        moved => {move-window()}
-        Rectangle {
+        moved => {
+            move-window()
+        }
+        rg := Rectangle {
             //background: @linear-gradient(130deg, #0a3018 0%, #0c612d 100%);
             background: @linear-gradient(130deg, #001B50 17%, #2A467C 61%, #0C58DB 94%);
             border-radius: 16px;
@@ -51,10 +64,15 @@ export component SlintMainWindow inherits Window {
                     padding-bottom: 0;
                     alignment: LayoutAlignment.end;
                     OptionsButton {
-                        on-close => {quit()}
-                        on-options => {show-options()}
+                        on-close => {
+                            quit()
+                        }
+                        on-options => {
+                            show-options()
+                        }
                     }
                 }
+
                 HorizontalLayout {
                     padding-left: 25px;
                     padding-right: 0px;
@@ -66,6 +84,7 @@ export component SlintMainWindow inherits Window {
                         image-fit: ImageFit.fill;
                         source: thumbnail-img;
                     }
+
                     VerticalLayout {
                         alignment: LayoutAlignment.start;
                         spacing: 5px;
@@ -75,14 +94,17 @@ export component SlintMainWindow inherits Window {
                             overflow: TextOverflow.elide;
                             width: root.width / 2;
                         }
+
                         Text {
                             text: track-subtitle;
                             overflow: TextOverflow.elide;
                             width: root.width / 2;
                         }
+
                         Rectangle {
                             height: 20px;
                         }
+
                         HorizontalLayout {
                             spacing: 25px;
                             VerticalLayout {
@@ -90,20 +112,28 @@ export component SlintMainWindow inherits Window {
                                 MediaButton {
                                     btn-type: MediaButtonType.Previous;
                                     size: 30px;
-                                    clicked => {previous-track()}
+                                    clicked => {
+                                        previous-track()
+                                    }
                                 }
                             }
+
                             MediaButton {
-                                clicked => {toggle-play();}
+                                clicked => {
+                                    toggle-play();
+                                }
                                 size: 35px;
                                 btn-type: playing ? MediaButtonType.Pause : MediaButtonType.Play;
                             }
+
                             VerticalLayout {
                                 alignment: LayoutAlignment.center;
                                 MediaButton {
                                     btn-type: MediaButtonType.Next;
                                     size: 30px;
-                                    clicked => {next-track()}
+                                    clicked => {
+                                        next-track()
+                                    }
                                 }
                             }
                         }

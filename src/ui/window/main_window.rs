@@ -1,21 +1,18 @@
 use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
-use i_slint_backend_winit::winit::platform::windows::WindowAttributesExtWindows;
+use i_slint_backend_winit::{EventResult, WinitWindowAccessor, winit::{event::WindowEvent as WinitEvent, keyboard::{Key, NamedKey}, platform::windows::WindowAttributesExtWindows}};
 use image::RgbaImage;
 use slint::{
-    ComponentHandle, Image, LogicalSize, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer,
-    ToSharedString, Weak,
+    ComponentHandle, Image, LogicalSize, PhysicalPosition, Rgba8Pixel, SharedPixelBuffer, ToSharedString, Weak, Window
 };
 use tokio::sync::watch::channel;
 
 use crate::{
-    callback, save_changes_in_settings,
-    service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService},
-    ui::{
+    callback, save_changes_in_settings, service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService}, settings::SpotickSettings, ui::{
         apply_border_radius, get_window_creation_settings,
-        window::{SettingsWindow, SlintMainWindow, Window},
-    },
+        window::{SettingsWindow, SlintMainWindow, Window as SpotickWindow},
+    }
 };
 
 pub struct MainWindow {
@@ -23,6 +20,9 @@ pub struct MainWindow {
     settings_window: SettingsWindow,
     media_service: SharedMediaService,
 }
+
+// HotKeys (TODO: Make them configurable(?))
+static PHANTOM_KEY: NamedKey = NamedKey::Control;
 
 impl MainWindow {
     pub async fn new(media_service: SharedMediaService, settings: SettingsWindow) -> Result<Self> {
@@ -41,6 +41,7 @@ impl MainWindow {
         app.enable_window_positioning().await;
         app.enable_window_scaling().await;
         app.setup_ui_callbacks();
+        app.enable_hotkeys();
 
         Ok(app)
     }
@@ -224,6 +225,35 @@ impl MainWindow {
             let _ = slint::quit_event_loop();
         });
     }
+
+    fn enable_hotkeys(&self) {
+        self.ui.window().on_winit_window_event({
+            let win = self.as_weak();
+            let settings = self.settings_window.get_settings();
+            move |_: &Window, ev: &WinitEvent| {
+                match ev {
+                    WinitEvent::KeyboardInput { event, .. } => {
+                        if let Key::Named(key) = event.logical_key {
+                            // Hotkeys
+                            if key == PHANTOM_KEY && !event.repeat {
+                                let is_phantom = event.state.is_pressed();
+                                let settings = settings.clone();
+                                let _ = win.upgrade_in_event_loop(move |win| {
+                                    let transparency = settings
+                                        .blocking_read()
+                                        .get_settings().phantom_transparency
+                                        .unwrap_or_else(|| SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY);
+                                    win.invoke_set_phantom(is_phantom, transparency);
+                                });
+                            }
+                        }
+                    },
+                    _ => {}
+                }
+                EventResult::Propagate
+            }
+        });
+    }
 }
 
 impl SlintMainWindow {
@@ -276,7 +306,7 @@ impl SlintMainWindow {
     }
 }
 
-impl Window<SlintMainWindow> for MainWindow {
+impl SpotickWindow<SlintMainWindow> for MainWindow {
     fn component(&self) -> &SlintMainWindow {
         &self.ui
     }

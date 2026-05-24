@@ -20,6 +20,11 @@ pub struct SpotickSettings {
     pub source_app: String,
     pub main_window_pos: PhysicalPosition,
     pub main_window_scale: f32,
+    pub phantom_transparency: Option<f32>
+}
+
+impl SpotickSettings {
+    pub const DEFAULT_PHANTOM_TRANSPARENCY: f32 = 0.6;
 }
 
 impl Default for SpotickSettings {
@@ -30,6 +35,7 @@ impl Default for SpotickSettings {
             main_window_scale: 1.0,
             source_app: String::from("spotify.exe"),
             main_window_pos: PhysicalPosition::default(),
+            phantom_transparency: Some(SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY)
         }
     }
 }
