@@ -11,6 +11,7 @@ description = "Simple and lightweight Windows widget for media applications like
 anyhow = "1.0.99"
 async-trait = "0.1.89"
 env_logger = "0.11.8"
+global-hotkey = "0.8.0"
 i-slint-backend-winit = "1.14.1"
 image = { version = "0.25.6", default-features = false, features = ["png", "jpeg", "bmp"] }
 log = "0.4.27"

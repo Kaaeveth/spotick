@@ -20,7 +20,7 @@ pub struct SettingsWindow {
     app_settings: SpotickAppSettings,
     media_service: SharedMediaService,
     scale_changed_tx: Sender<f32>,
-    phantom_transparency_changed_tx: Sender<f32>
+    phantom_transparency_changed_tx: Sender<f32>,
 }
 
 impl SettingsWindow {
@@ -35,7 +35,7 @@ impl SettingsWindow {
             media_service,
             app_settings,
             scale_changed_tx: channel(1f32).0,
-            phantom_transparency_changed_tx: channel(1f32).0
+            phantom_transparency_changed_tx: channel(1f32).0,
         };
 
         win.connect_settings();
@@ -60,7 +60,11 @@ impl SettingsWindow {
                     ui.set_always_top(settings.always_on_top);
                     ui.set_media_application_id(settings.source_app.to_shared_string());
                     ui.set_window_scale(settings.main_window_scale);
-                    ui.set_ui_phantom_transparency(settings.phantom_transparency.unwrap_or_else(||SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY));
+                    ui.set_ui_phantom_transparency(
+                        settings
+                            .phantom_transparency
+                            .unwrap_or_else(|| SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY),
+                    );
                 }) {
                     break;
                 }
@@ -86,8 +90,8 @@ impl SettingsWindow {
             let _ = scale_sender.send_replace(scale);
         });
         callback!(on_phantom_transparency_changed, |ui| {
-           let transparency = ui.get_ui_phantom_transparency();
-           let _ = transparency_sender.send_replace(transparency);
+            let transparency = ui.get_ui_phantom_transparency();
+            let _ = transparency_sender.send_replace(transparency);
         });
 
         let mut scale_rv = self.subscribe_scale_changed();

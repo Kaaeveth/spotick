@@ -5,6 +5,7 @@ use anyhow::Result;
 
 use crate::{
     autostart::register_autostart_changed,
+    hotkey::HotkeyManager,
     service::WindowsMediaService,
     settings::{AppSettings, SpotickSettings},
     ui::{
@@ -14,6 +15,7 @@ use crate::{
 };
 
 mod autostart;
+mod hotkey;
 mod service;
 mod settings;
 mod ui;
@@ -22,6 +24,8 @@ mod ui;
 async fn main() -> Result<()> {
     env_logger::init();
     init_backend()?;
+
+    HotkeyManager::setup();
 
     let settings = AppSettings::<SpotickSettings>::default()?;
     settings.write().await.load().await?;

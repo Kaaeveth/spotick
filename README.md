@@ -9,7 +9,7 @@ Any application using the Windows Media Control is supported.
 
 ## Usage
 Simply start spotick.exe and configure your preferences in the options.
-Use can use `Ctrl` to make the app semi-transparent.
+Use can use `Ctrl+Alt+Space` to make the app semi-transparent.
 
 ## Development
 Simply use `cargo` to compile and run the project.
