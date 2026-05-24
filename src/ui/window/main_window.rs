@@ -234,7 +234,7 @@ impl MainWindow {
                 match ev {
                     WinitEvent::KeyboardInput { event, .. } => {
                         if let Key::Named(key) = event.logical_key {
-                            // Hotkeys
+                            // Check if one of the Hotkeys is pressed and act accordingly
                             if key == PHANTOM_KEY && !event.repeat {
                                 let is_phantom = event.state.is_pressed();
                                 let settings = settings.clone();

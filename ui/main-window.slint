@@ -2,6 +2,7 @@ import { OptionsButton } from "widgets/options-button.slint";
 import { MediaButton, MediaButtonType } from "widgets/media-button.slint";
 import { SlintSettingsWindow } from "settings-window.slint";
 import { SlintAvailableSessionsWindow } from "available-sessions-window.slint";
+import "./assets/GoogleSansFlex.ttf";
 
 export { SlintSettingsWindow, SlintAvailableSessionsWindow }
 
@@ -11,6 +12,7 @@ export component SlintMainWindow inherits Window {
     no-frame: true;
     title: "Spotick";
     background: rgba(0,0,0,0);
+    default-font-family: "Google Sans Flex";
 
     out property <length> original-window-height: self.height;
     out property <length> original-window-width: self.width;
