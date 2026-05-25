@@ -9,7 +9,7 @@ Any application using the Windows Media Control is supported.
 
 ## Usage
 Simply start spotick.exe and configure your preferences in the options.
-Use can use `Ctrl+Alt+Space` to make the app semi-transparent.
+Use can use `Ctrl+Alt+Space` to enter phantom-mode, which makes the app semi-transparent and lets you use the window underneath it.
 
 ## Development
 Simply use `cargo` to compile and run the project.

@@ -10,10 +10,15 @@ use slint::{
 use tokio::sync::watch::channel;
 
 use crate::{
-    callback, hotkey::{HotkeyEvent, HotkeyManager}, listen_hotkeys, save_changes_in_settings, service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService}, settings::SpotickSettings, ui::{
+    callback,
+    hotkey::{HotkeyEvent, HotkeyManager},
+    listen_hotkeys, save_changes_in_settings,
+    service::{AlbumCover, BaseService, PlaybackChangedEvent, SharedMediaService},
+    settings::SpotickSettings,
+    ui::{
         apply_border_radius, get_window_creation_settings,
         window::{SettingsWindow, SlintMainWindow, Window as SpotickWindow},
-    }
+    },
 };
 
 pub struct MainWindow {
@@ -236,10 +241,8 @@ impl MainWindow {
                             .blocking_read()
                             .get_settings()
                             .phantom_transparency
-                            .unwrap_or_else(|| {
-                                SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY
-                            });
-                        win.invoke_set_phantom(pressed, transparency);
+                            .unwrap_or_else(|| SpotickSettings::DEFAULT_PHANTOM_TRANSPARENCY);
+                        win.set_phantom(pressed, transparency);
                     });
                 }
             }
@@ -259,6 +262,42 @@ impl SlintMainWindow {
         );
         let image = Image::from_rgba8(buffer);
         self.set_thumbnail_img(image);
+    }
+
+    fn set_phantom(&self, active: bool, opacity: f32) {
+        self.invoke_set_phantom(active, opacity);
+
+        // Disable inputs to the window and instead let them pass to the window underneath
+        #[cfg(windows)]
+        {
+            use i_slint_backend_winit::winit::raw_window_handle::{
+                HasWindowHandle, RawWindowHandle,
+            };
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::UI::WindowsAndMessaging::*;
+
+            let winit_handle = self.window().window_handle();
+            let Ok(raw_handle) = winit_handle.window_handle() else {
+                return;
+            };
+            let hwnd = match raw_handle.as_raw() {
+                RawWindowHandle::Win32(h) => Some(HWND(h.hwnd.get() as _)),
+                _ => None,
+            };
+            let Some(hwnd) = hwnd else {
+                return;
+            };
+
+            unsafe {
+                let mut ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+                if active {
+                    ex_style |= WS_EX_TRANSPARENT.0 as i32 | WS_EX_LAYERED.0 as i32;
+                } else {
+                    ex_style &= -(WS_EX_TRANSPARENT.0 as i32 & WS_EX_LAYERED.0 as i32);
+                }
+                SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style);
+            }
+        }
     }
 
     /// Sets the initial (empty) album cover image

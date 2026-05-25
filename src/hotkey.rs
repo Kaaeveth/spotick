@@ -55,7 +55,14 @@ impl HotkeyManager {
     }
 
     fn register_all_hotkeys(&self) {
-        self.manager.register(*PHANTOM_KEY).unwrap();
+        macro_rules! register {
+            ($key:ident) => {
+                if let Err(e) = self.manager.register(*$key) {
+                    log::error!(concat!("Error registering key [", stringify!($key), "]: {:?}"), e);
+                }
+            }
+        }
+        register!(PHANTOM_KEY);
     }
 
     /// Handles Hotkeys-Events and broadcasts them accordingly
@@ -82,13 +89,13 @@ macro_rules! listen_hotkeys {
     (|$hk:ident|$handler:block) => {{
         let mut hk_rv = HotkeyManager::get().subscribe();
         tokio::spawn(async move {
-           loop {
-               if let Ok($hk) = hk_rv.recv().await {
-                   $handler
-               } else {
-                   break;
-               }
-           }
+            loop {
+                if let Ok($hk) = hk_rv.recv().await {
+                    $handler
+                } else {
+                    break;
+                }
+            }
         });
     }};
 }
