@@ -151,7 +151,7 @@ mod test {
         let default_path = get_default_save_path();
         assert_eq!(
             default_path,
-            PathBuf::from("C:\\Users\\test\\AppData\\Roaming\\spotick\\settings.json")
+            PathBuf::from("C:\\Users\\test\\AppData\\Roaming\\spotick\\settings-dbg.json")
         );
     }
 
